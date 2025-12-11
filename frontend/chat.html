@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <input type="text" id="profileSearchInput" class="profile-search-input" placeholder="Search here...">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div style="margin-bottom: 1rem;">
+            <h2 style="color: var(--navy-blue);" id="projectTitle">Chat</h2>
+            <button class="btn btn-outline" onclick="window.location.href='index.html'" style="margin-top: 0.5rem;">← Back to Dashboard</button>
+        </div>
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="loading">Loading messages...</div>
+            </div>
+            <div class="chat-members">
+                <h4 style="color: var(--navy-blue); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--light-grey);">Team Members</h4>
+                <div id="membersList" style="max-height: calc(100vh - 300px); overflow-y: auto;">
+                    <div class="loading">Loading members...</div>
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-container">
+            <input type="text" id="messageInput" class="chat-input" placeholder="Type your message...">
+            <button class="btn btn-primary" id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Get correct Socket.IO URL based on current port
+        (function() {
+            // Remove any existing socket.io script tags to prevent duplicates
+            const existingScripts = document.querySelectorAll('script[src*="socket.io"]');
+            existingScripts.forEach(script => script.remove());
+            
+            const port = window.location.port;
+            const hostname = window.location.hostname;
+            let socketIoUrl;
+            
+            if (port && port !== '3000' && port !== '') {
+                socketIoUrl = `http://${hostname}:3000/socket.io/socket.io.js`;
+            } else {
+                socketIoUrl = '/socket.io/socket.io.js';
+            }
+            
+            const script = document.createElement('script');
+            script.src = socketIoUrl;
+            script.onerror = function() {
+                console.error('Failed to load Socket.IO from:', socketIoUrl);
+                console.error('Make sure the backend server is running on port 3000');
+            };
+            script.onload = function() {
+                console.log('✅ Socket.IO loaded successfully from:', socketIoUrl);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <script src="js/utils.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/profile-search.js"></script>
+    <script src="js/notifications.js"></script>
+</body>
+</html>
+

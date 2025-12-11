@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chat Connection</title>
+</head>
+<body>
+    <h1>Chat Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="messages"></div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        
+        function addMessage(msg) {
+            const p = document.createElement('p');
+            p.textContent = new Date().toLocaleTimeString() + ' - ' + msg;
+            messagesDiv.appendChild(p);
+        }
+        
+        if (typeof io === 'undefined') {
+            statusDiv.textContent = '❌ Socket.IO library not loaded';
+            addMessage('Error: Socket.IO library not found');
+        } else {
+            statusDiv.textContent = '✅ Socket.IO library loaded';
+            addMessage('Socket.IO library found');
+            
+            try {
+                const socket = io();
+                
+                socket.on('connect', () => {
+                    statusDiv.textContent = '✅ Connected to server';
+                    addMessage('Connected to server: ' + socket.id);
+                });
+                
+                socket.on('disconnect', () => {
+                    statusDiv.textContent = '❌ Disconnected';
+                    addMessage('Disconnected from server');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    statusDiv.textContent = '❌ Connection error';
+                    addMessage('Connection error: ' + error.message);
+                });
+            } catch (error) {
+                statusDiv.textContent = '❌ Error: ' + error.message;
+                addMessage('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+
+

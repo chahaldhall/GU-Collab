@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Details - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <input type="text" id="profileSearchInput" class="profile-search-input" placeholder="Search here...">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div id="projectDetails">
+            <div class="loading">Loading project details...</div>
+        </div>
+    </div>
+
+    <!-- Request Modal -->
+    <div class="modal" id="requestModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Request to Join</h3>
+                <button class="modal-close" onclick="closeRequestModal()">&times;</button>
+            </div>
+            <form id="requestForm">
+                <div class="form-group">
+                    <label class="form-label" for="requestMessage">Message</label>
+                    <textarea id="requestMessage" class="form-input" rows="4" placeholder="Why do you want to join this project?" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Request</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/projects.js"></script>
+    <script src="js/profile-search.js"></script>
+    <script src="js/notifications.js"></script>
+</body>
+</html>
+
+

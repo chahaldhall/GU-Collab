@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="images/login.png" alt="GUCollab Logo" style="max-width: 200px; width: 100%; height: auto; margin-bottom: 1rem;">
+                <h1 class="auth-title">GUCollab</h1>
+            </div>
+            <form id="loginForm">
+                <!-- Role Selector -->
+                <div class="role-selector" style="margin-bottom: 1.5rem;">
+                    <button type="button" class="role-tab active" id="studentLoginTab" onclick="selectLoginRole('student')">Student</button>
+                    <button type="button" class="role-tab" id="teacherLoginTab" onclick="selectLoginRole('teacher')">Teacher</button>
+                </div>
+                <input type="hidden" id="loginRole" value="student">
+                
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" id="email" class="form-input" placeholder="name@geetauniversity.edu.in" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="forgot-password.html" style="color: var(--navy-blue); text-decoration: none;">Forgot Password?</a>
+                </div>
+                <div id="signupLinkContainer" style="text-align: center; margin-top: 1rem;">
+                    <span style="color: #666;">Don't have an account? </span>
+                    <a href="signup.html" style="color: var(--university-orange); text-decoration: none; font-weight: bold;">Sign Up</a>
+                </div>
+            </form>
+            <div id="errorMessage" style="color: red; margin-top: 1rem; text-align: center; display: none;"></div>
+        </div>
+    </div>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Debug: Check if scripts loaded
+        window.addEventListener('load', () => {
+            console.log('Page loaded');
+            console.log('apiRequest available:', typeof apiRequest !== 'undefined');
+            console.log('loginForm exists:', !!document.getElementById('loginForm'));
+            
+            // Test if form handler is attached
+            const form = document.getElementById('loginForm');
+            if (form) {
+                console.log('Form found, checking event listeners...');
+                form.addEventListener('submit', (e) => {
+                    console.log('Form submit triggered (this is normal)');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+

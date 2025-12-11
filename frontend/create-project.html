@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Project - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <input type="text" id="profileSearchInput" class="profile-search-input" placeholder="Search here...">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="form-container">
+            <h2 style="color: var(--navy-blue); margin-bottom: 2rem; text-align: center;">Create New Project</h2>
+            <form id="createProjectForm">
+                <div class="form-group">
+                    <label class="form-label" for="title">Project Title</label>
+                    <input type="text" id="title" class="form-input" placeholder="Enter project title" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="description">Description</label>
+                    <textarea id="description" class="form-input" rows="5" placeholder="Describe your project" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="techStack">Tech Stack (comma separated)</label>
+                    <input type="text" id="techStack" class="form-input" placeholder="React, Node.js, MongoDB" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="type">Type</label>
+                    <select id="type" class="form-select" required>
+                        <option value="Project">Project</option>
+                        <option value="Hackathon Team Requirement">Hackathon Team Requirement</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="requiredMembers">Required Members</label>
+                    <input type="number" id="requiredMembers" class="form-input" min="1" value="1" required>
+                </div>
+                <div class="form-group" id="deadlineGroup" style="display: none;">
+                    <label class="form-label" for="deadline">Deadline (for Hackathons)</label>
+                    <input type="date" id="deadline" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Project</button>
+                <button type="button" class="btn btn-outline" onclick="window.location.href='index.html'" style="width: 100%; margin-top: 0.5rem;">Cancel</button>
+            </form>
+            <div id="errorMessage" style="color: red; margin-top: 1rem; text-align: center; display: none;"></div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!requireAuth()) return;
+            
+            const user = getCurrentUser();
+            if (user) {
+                // Redirect teachers - they cannot create projects
+                if (user.role === 'teacher') {
+                    alert('Teachers cannot create projects. Redirecting to dashboard...');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userAvatar').innerHTML = getAvatarHTML(user);
+            }
+            
+            // Show/hide deadline based on type
+            document.getElementById('type').addEventListener('change', (e) => {
+                const deadlineGroup = document.getElementById('deadlineGroup');
+                if (e.target.value === 'Hackathon Team Requirement') {
+                    deadlineGroup.style.display = 'block';
+                } else {
+                    deadlineGroup.style.display = 'none';
+                }
+            });
+            
+            // Form submit
+            document.getElementById('createProjectForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.style.display = 'none';
+                
+                const title = document.getElementById('title').value;
+                const description = document.getElementById('description').value;
+                const techStack = document.getElementById('techStack').value.split(',').map(t => t.trim()).filter(t => t);
+                const type = document.getElementById('type').value;
+                const requiredMembers = parseInt(document.getElementById('requiredMembers').value);
+                const deadline = document.getElementById('deadline').value;
+                
+                try {
+                    const project = await apiRequest('/projects', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title,
+                            description,
+                            techStack,
+                            type,
+                            requiredMembers,
+                            deadline: deadline || null
+                        })
+                    });
+                    
+                    window.location.href = `project-details.html?id=${project._id}`;
+                } catch (error) {
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+        });
+        
+        // Toggle user dropdown (make globally accessible)
+        window.toggleUserDropdown = function() {
+            const dropdown = document.getElementById('userDropdown');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+            }
+        };
+        
+        // Logout (make globally accessible)
+        window.logout = function() {
+            removeToken();
+            removeCurrentUser();
+            window.location.href = 'login.html';
+        };
+    </script>
+    <script src="js/profile-search.js"></script>
+    <script src="js/notifications.js"></script>
+</body>
+</html>
+
+

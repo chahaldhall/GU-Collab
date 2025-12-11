@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <input type="text" id="profileSearchInput" class="profile-search-input" placeholder="Search here...">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="profile-container">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="profile-avatar-container">
+                    <div id="profileAvatar"></div>
+                </div>
+                <div class="profile-info">
+                    <h2 id="profileName"></h2>
+                    <p id="profileRollNo" style="display: none;"><strong>Roll No:</strong> <span id="profileRollNoValue"></span></p>
+                    <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+                    <p id="profileCourse" style="display: none;"><strong>Course:</strong> <span id="profileCourseValue"></span></p>
+                    <p id="profileDepartment" style="display: none;"><strong>Department:</strong> <span id="profileDepartmentValue"></span></p>
+                    <div class="profile-links">
+                        <a href="#" id="githubLink" class="profile-link" target="_blank">GitHub</a>
+                        <a href="#" id="linkedinLink" class="profile-link" target="_blank">LinkedIn</a>
+                    </div>
+                    <p id="profileBio" style="margin-top: 1rem;"></p>
+                    <div id="profileSkills" style="margin-top: 1rem;"></div>
+                    <button class="btn btn-primary" id="editProfileBtn" onclick="openEditModal()" style="margin-top: 1rem;">Edit Profile</button>
+                </div>
+            </div>
+
+            <!-- Calendar (Hidden for teachers) -->
+            <div class="calendar-container" id="calendarSection" style="display: none;">
+                <h3 class="calendar-title">Activity Calendar</h3>
+                <div id="calendarGrid" class="calendar-grid-wrapper"></div>
+                <div class="calendar-legend">
+                    <span>Less</span>
+                    <div class="calendar-legend-item">
+                        <div class="calendar-day"></div>
+                        <div class="calendar-day level-1"></div>
+                        <div class="calendar-day level-2"></div>
+                        <div class="calendar-day level-3"></div>
+                        <div class="calendar-day level-4"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </div>
+
+            <!-- Projects Created (Hidden for teachers) -->
+            <div class="card" id="projectsCreatedSection" style="display: none;">
+                <h3 class="card-title">Projects Created</h3>
+                <div id="projectsCreated"></div>
+            </div>
+
+            <!-- Projects Joined (Hidden for teachers) -->
+            <div class="card" id="projectsJoinedSection" style="display: none;">
+                <h3 class="card-title">Projects Joined</h3>
+                <div id="projectsJoined"></div>
+            </div>
+
+            <!-- Completed Projects (Hidden for teachers) -->
+            <div class="card" id="completedProjectsSection" style="display: none;">
+                <h3 class="card-title">Completed Projects Showcase</h3>
+                <button class="btn btn-secondary" onclick="openAddCompletedProjectModal()" style="margin-bottom: 1rem;">Add Completed Project</button>
+                <div id="completedProjects"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Profile</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label class="form-label" for="editName">Name</label>
+                    <input type="text" id="editName" class="form-input" required>
+                </div>
+                <div class="form-group" id="editDepartmentGroup" style="display: none;">
+                    <label class="form-label" for="editDepartment">Department</label>
+                    <input type="text" id="editDepartment" class="form-input" placeholder="Department">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editGithub">GitHub ID</label>
+                    <input type="text" id="editGithub" class="form-input" placeholder="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editLinkedin">LinkedIn ID</label>
+                    <input type="text" id="editLinkedin" class="form-input" placeholder="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editBio">Bio</label>
+                    <textarea id="editBio" class="form-input" rows="4" placeholder="Tell us about yourself"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editSkills">Skills (comma separated)</label>
+                    <input type="text" id="editSkills" class="form-input" placeholder="React, Node.js, Python">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Completed Project Modal -->
+    <div class="modal" id="addCompletedProjectModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Completed Project</h3>
+                <button class="modal-close" onclick="closeAddCompletedProjectModal()">&times;</button>
+            </div>
+            <form id="addCompletedProjectForm">
+                <div class="form-group">
+                    <label class="form-label" for="projectTitle">Title</label>
+                    <input type="text" id="projectTitle" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="projectDescription">Description</label>
+                    <textarea id="projectDescription" class="form-input" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="projectLearnings">What you learnt</label>
+                    <textarea id="projectLearnings" class="form-input" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="projectGithub">GitHub Link</label>
+                    <input type="url" id="projectGithub" class="form-input" placeholder="https://github.com/...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="projectHackathons">Hackathons (comma separated)</label>
+                    <input type="text" id="projectHackathons" class="form-input" placeholder="Hackathon 1, Hackathon 2">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Project</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/profile-search.js"></script>
+    <script src="js/notifications.js"></script>
+</body>
+</html>
+
+

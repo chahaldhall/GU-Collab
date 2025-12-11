@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Page</title>
+</head>
+<body>
+    <h1>Login Page Test</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        const results = document.getElementById('test-results');
+        
+        function addResult(test, status, message) {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 0.5rem; margin: 0.5rem 0; border: 1px solid #ccc; border-radius: 5px;';
+            div.innerHTML = `<strong>${test}:</strong> <span style="color: ${status === 'PASS' ? 'green' : 'red'}">${status}</span> - ${message}`;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Check if utils.js is loaded
+        setTimeout(() => {
+            if (typeof apiRequest !== 'undefined') {
+                addResult('utils.js loaded', 'PASS', 'apiRequest function found');
+            } else {
+                addResult('utils.js loaded', 'FAIL', 'apiRequest function not found');
+            }
+            
+            // Test 2: Check if auth.js is loaded
+            if (document.getElementById('loginForm')) {
+                addResult('loginForm exists', 'PASS', 'Login form found in DOM');
+            } else {
+                addResult('loginForm exists', 'FAIL', 'Login form not found');
+            }
+            
+            // Test 3: Check API endpoint
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'test@test.com', password: 'test' })
+            })
+            .then(response => {
+                if (response.status === 401 || response.status === 400) {
+                    addResult('API endpoint', 'PASS', `Server responding (${response.status})`);
+                } else {
+                    addResult('API endpoint', 'FAIL', `Unexpected status: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                addResult('API endpoint', 'FAIL', `Cannot connect: ${error.message}`);
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
+

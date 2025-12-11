@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUCollab - Dashboard</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <input type="text" id="profileSearchInput" class="profile-search-input" placeholder="Search here...">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+       
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('all')">All Projects</button>
+            <button class="tab" onclick="switchTab('my')">My Projects</button>
+            <button class="tab" onclick="switchTab('hackathons')">Hackathons</button>
+            <button class="tab" onclick="switchTab('announcements')">Announcements</button>
+            <button class="btn btn-secondary" id="createProjectBtn" onclick="window.location.href='create-project.html'" style="margin-left: auto;">+ Create Project</button>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search projects...">
+            <select id="techFilter" class="filter-select">
+                <option value="">All Tech Stacks</option>
+                <option value="React">React</option>
+                <option value="Node.js">Node.js</option>
+                <option value="Python">Python</option>
+                <option value="Java">Java</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="MongoDB">MongoDB</option>
+            </select>
+        </div>
+
+        <!-- Projects Container -->
+        <div id="projectsContainer">
+            <div class="loading">Loading projects...</div>
+        </div>
+    </div>
+
+    <!-- Create Announcement Modal -->
+    <div class="modal" id="createAnnouncementModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Announcement</h3>
+                <button class="modal-close" onclick="closeCreateAnnouncementModal()">&times;</button>
+            </div>
+            <form id="createAnnouncementForm" onsubmit="event.preventDefault(); createAnnouncement();">
+                <div class="form-group">
+                    <label class="form-label" for="announcementTitle">Title</label>
+                    <input type="text" id="announcementTitle" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="announcementContent">Content</label>
+                    <textarea id="announcementContent" class="form-input" rows="6" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="announcementDeadline">Deadline (Optional - Students won't see this)</label>
+                    <input type="datetime-local" id="announcementDeadline" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Attachments (Images or PDFs)</label>
+                    <input type="file" id="announcementFiles" class="form-input" accept="image/*,.pdf" multiple>
+                    <small style="color: #666;">You can upload multiple images or PDF files (max 10MB each)</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Links</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="url" id="linkUrl" class="form-input" placeholder="URL" style="flex: 2;">
+                        <input type="text" id="linkName" class="form-input" placeholder="Link Name (optional)" style="flex: 1;">
+                        <button type="button" class="btn btn-outline" onclick="addAnnouncementLink()">Add Link</button>
+                    </div>
+                    <div id="linksContainer"></div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Announcement</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Announcement Modal -->
+    <div class="modal" id="editAnnouncementModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Announcement</h3>
+                <button class="modal-close" onclick="closeEditAnnouncementModal()">&times;</button>
+            </div>
+            <form id="editAnnouncementForm" onsubmit="event.preventDefault(); updateAnnouncement();">
+                <input type="hidden" id="editAnnouncementId">
+                <div class="form-group">
+                    <label class="form-label" for="editAnnouncementTitle">Title</label>
+                    <input type="text" id="editAnnouncementTitle" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editAnnouncementContent">Content</label>
+                    <textarea id="editAnnouncementContent" class="form-input" rows="6" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editAnnouncementDeadline">Deadline (Optional - Students won't see this)</label>
+                    <input type="datetime-local" id="editAnnouncementDeadline" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Add More Attachments (Images or PDFs)</label>
+                    <input type="file" id="editAnnouncementFiles" class="form-input" accept="image/*,.pdf" multiple>
+                    <small style="color: #666;">You can add more images or PDF files (max 10MB each)</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Links</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="url" id="editLinkUrl" class="form-input" placeholder="URL" style="flex: 2;">
+                        <input type="text" id="editLinkName" class="form-input" placeholder="Link Name (optional)" style="flex: 1;">
+                        <button type="button" class="btn btn-outline" onclick="addAnnouncementLink(); updateEditLinksDisplay();">Add Link</button>
+                    </div>
+                    <div id="editLinksContainer"></div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Update Announcement</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Load Socket.IO with error handling
+        (function() {
+            const script = document.createElement('script');
+            script.src = '/socket.io/socket.io.js';
+            script.onerror = function() {
+                console.warn('Socket.IO library not loaded - chat features may not work. Make sure the server is running on port 3000.');
+            };
+            script.onload = function() {
+                console.log('✅ Socket.IO loaded successfully');
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <script src="js/utils.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/profile-search.js"></script>
+    <script src="js/notifications.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - GUCollab</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <div class="logo-circle"><img src="images/logo.png" alt="GUCollab Logo" class="logo-image"></div>
+            <div class="navbar-title" onclick="window.location.href='index.html'">GUCollab</div>
+        </div>
+        <div class="navbar-right">
+            <div class="profile-search-container">
+                <div id="profileSearchResults" class="profile-search-results"></div>
+            </div>
+            <div class="notification-icon" id="notificationIcon">
+                🔔
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </div>
+            <div class="notification-dropdown" id="notificationDropdown"></div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <div id="userAvatar" onclick="toggleUserDropdown()"></div>
+                <div class="dropdown" id="userDropdown">
+                    <div class="dropdown-item" onclick="event.stopPropagation(); window.location.href='profile.html'">My Profile</div>
+                    <div class="dropdown-item" onclick="event.stopPropagation(); if (typeof logout === 'function') logout(); else { removeToken(); removeCurrentUser(); window.location.href='login.html'; }">Logout</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 style="color: var(--navy-blue);">Notifications</h2>
+            <button class="btn btn-secondary" onclick="markAllAsRead()">Mark All as Read</button>
+        </div>
+        <div id="notificationsContainer">
+            <div class="loading">Loading notifications...</div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/profile-search.js"></script>
+    <script>
+        // Use a different variable name to avoid conflict with notifications.js
+        let pageNotifications = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!requireAuth()) return;
+
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userAvatar').innerHTML = getAvatarHTML(user);
+            }
+
+            await loadNotifications();
+        });
+
+        // Load notifications
+        async function loadNotifications() {
+            try {
+                console.log('Loading notifications...');
+                const allNotifications = await apiRequest('/notifications');
+                console.log('API Response:', allNotifications);
+                console.log('All notifications received:', Array.isArray(allNotifications) ? allNotifications.length : 'Not an array');
+                
+                if (!Array.isArray(allNotifications)) {
+                    console.error('Notifications is not an array:', allNotifications);
+                    const container = document.getElementById('notificationsContainer');
+                    if (container) {
+                        container.innerHTML = '<div class="loading" style="color: red;">Error: Invalid response from server</div>';
+                    }
+                    return;
+                }
+                
+                // Filter out read (seen) notifications - only show unread ones
+                const unreadNotifications = allNotifications.filter(n => !n.read);
+                console.log('Unread notifications:', unreadNotifications.length);
+                
+                // Sort by date: newest first
+                pageNotifications = unreadNotifications.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || 0);
+                    const dateB = new Date(b.createdAt || 0);
+                    return dateB - dateA;
+                });
+                console.log('Total unread notifications after sort:', pageNotifications.length);
+                if (pageNotifications.length > 0) {
+                    console.log('Sample notification:', pageNotifications[0]);
+                }
+                displayNotifications();
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                const container = document.getElementById('notificationsContainer');
+                if (container) {
+                    container.innerHTML = `<div class="loading" style="color: red;">Error: ${error.message || 'Failed to load notifications'}</div>`;
+                }
+            }
+        }
+
+        // Display notifications
+        function displayNotifications() {
+            const container = document.getElementById('notificationsContainer');
+            
+            if (!container) {
+                console.error('Notifications container not found!');
+                return;
+            }
+            
+            if (!pageNotifications || pageNotifications.length === 0) {
+                container.innerHTML = '<div class="loading">No notifications</div>';
+                return;
+            }
+
+            console.log('Displaying', pageNotifications.length, 'notifications');
+            console.log('Notifications data:', pageNotifications);
+            
+            try {
+                const html = pageNotifications.map(notif => {
+                    const isJoinRequest = notif.type === 'join_request';
+                    const projectId = notif.projectId?._id || notif.projectId;
+                    const projectIdStr = projectId ? String(projectId) : '';
+                    const notificationId = String(notif._id || '');
+                    const title = escapeHtml(notif.title || 'Notification');
+                    const message = escapeHtml(notif.message || '');
+                    const dateStr = notif.createdAt ? formatDate(notif.createdAt) : '';
+                    const unreadClass = notif.read ? '' : 'unread';
+                    const newBadge = !notif.read ? '<span style="color: var(--university-orange); font-weight: bold; margin-left: 0.5rem;">● New</span>' : '';
+                    const borderStyle = !notif.read ? 'border-left: 4px solid var(--university-orange);' : '';
+                    
+                    let htmlContent = `
+                        <div class="card ${unreadClass}" style="margin-bottom: 1rem; ${borderStyle}">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1; cursor: pointer;" onclick="handleNotificationClick('${notificationId}', '${projectIdStr}')">
+                                    <h4 style="color: var(--navy-blue); margin-bottom: 0.5rem;">${title}${newBadge}</h4>
+                                    <p style="margin-bottom: 0.5rem; color: #666;">${message}</p>
+                                    ${dateStr ? `<small style="color: #999;">${dateStr}</small>` : ''}
+                                </div>`;
+                    
+                    if (isJoinRequest && projectIdStr) {
+                        htmlContent += `
+                                <div style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                                    <button class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" 
+                                            onclick="event.stopPropagation(); handleAcceptRequest('${notificationId}', '${projectIdStr}')">
+                                        Accept
+                                    </button>
+                                    <button class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;" 
+                                            onclick="event.stopPropagation(); handleRejectRequest('${notificationId}', '${projectIdStr}')">
+                                        Reject
+                                    </button>
+                                </div>`;
+                    }
+                    
+                    htmlContent += `
+                            </div>
+                        </div>`;
+                    
+                    return htmlContent;
+                }).join('');
+                
+                container.innerHTML = html;
+                console.log('Notifications HTML set, container has', container.children.length, 'children');
+            } catch (error) {
+                console.error('Error displaying notifications:', error);
+                container.innerHTML = `<div class="loading" style="color: red;">Error displaying notifications: ${error.message}</div>`;
+            }
+        }
+
+        // Handle notification click
+        async function handleNotificationClick(notificationId, projectId) {
+            try {
+                // Find notification type before removing it
+                const notification = pageNotifications.find(n => String(n._id) === String(notificationId));
+                const notificationType = notification?.type || '';
+                
+                // Mark notification as read
+                await apiRequest(`/notifications/${notificationId}/read`, { method: 'PUT' });
+                
+                // Remove the notification from the page immediately
+                pageNotifications = pageNotifications.filter(n => String(n._id) !== String(notificationId));
+                displayNotifications();
+                
+                if (projectId) {
+                    // Convert projectId to string (handle both object and string)
+                    const projectIdStr = String(projectId?._id || projectId || '');
+                    
+                    if (projectIdStr && projectIdStr !== 'undefined' && projectIdStr !== 'null') {
+                        // Check if it's a chat-related notification
+                        if (notificationType === 'new_message' || notificationType === 'chat_mention' || 
+                            notification?.message?.toLowerCase().includes('message')) {
+                            // Redirect to chat
+                            window.location.href = `chat.html?projectId=${projectIdStr}`;
+                        } else {
+                            // Redirect to project details for all other types
+                            window.location.href = `project-details.html?id=${projectIdStr}`;
+                        }
+                    } else {
+                        console.error('Invalid project ID:', projectId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error handling notification click:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Handle accept request from notification
+        async function handleAcceptRequest(notificationId, projectId) {
+            try {
+                const projectIdStr = String(projectId || '');
+                // First, get the request ID from the notification
+                const requests = await apiRequest('/requests/my');
+                const request = requests.find(r => {
+                    const rProjectId = String(r.projectId?._id || r.projectId || '');
+                    return rProjectId === projectIdStr && r.status === 'Pending';
+                });
+                
+                if (request) {
+                    const requestId = String(request._id || request.id || '');
+                    await apiRequest(`/requests/accept/${requestId}`, { method: 'PUT' });
+                    await apiRequest(`/notifications/${notificationId}/read`, { method: 'PUT' });
+                    alert('Request accepted! Member added to project.');
+                    await loadNotifications();
+                } else {
+                    alert('Request not found or already processed.');
+                }
+            } catch (error) {
+                alert('Error accepting request: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+
+        // Handle reject request from notification
+        async function handleRejectRequest(notificationId, projectId) {
+            try {
+                const projectIdStr = String(projectId || '');
+                const requests = await apiRequest('/requests/my');
+                const request = requests.find(r => {
+                    const rProjectId = String(r.projectId?._id || r.projectId || '');
+                    return rProjectId === projectIdStr && r.status === 'Pending';
+                });
+                
+                if (request) {
+                    const requestId = String(request._id || request.id || '');
+                    await apiRequest(`/requests/reject/${requestId}`, { method: 'PUT' });
+                    await apiRequest(`/notifications/${notificationId}/read`, { method: 'PUT' });
+                    alert('Request rejected.');
+                    await loadNotifications();
+                } else {
+                    alert('Request not found or already processed.');
+                }
+            } catch (error) {
+                alert('Error rejecting request: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+        
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Mark all as read
+        async function markAllAsRead() {
+            try {
+                await apiRequest('/notifications/read-all', { method: 'PUT' });
+                // Reload notifications after marking all as read
+                await loadNotifications();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Toggle user dropdown (make globally accessible)
+        window.toggleUserDropdown = function() {
+            const dropdown = document.getElementById('userDropdown');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+            }
+        };
+
+        // Logout (make globally accessible)
+        window.logout = function() {
+            removeToken();
+            removeCurrentUser();
+            window.location.href = 'login.html';
+        };
+    </script>
+</body>
+</html>
+
