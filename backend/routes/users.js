@@ -111,6 +111,54 @@ router.get('/me', auth, async (req, res) => {
       }
     }
 
+    // Validate profileImage path - clear if file doesn't exist
+    if (user.profileImage) {
+      const imagePath = path.join(__dirname, '..', user.profileImage);
+      if (!fs.existsSync(imagePath)) {
+        console.warn(`⚠️ Profile image file not found for user ${user._id}: ${user.profileImage}`);
+        console.warn(`   Full path checked: ${imagePath}`);
+        
+        // Try to find any valid file for this user
+        const uploadDir = path.join(__dirname, '..', 'uploads', 'avatars');
+        if (fs.existsSync(uploadDir)) {
+          const files = fs.readdirSync(uploadDir);
+          const userFiles = files.filter(f => f.startsWith(user._id.toString()));
+          const existingFiles = userFiles.filter(f => {
+            const testPath = path.join(uploadDir, f);
+            return fs.existsSync(testPath);
+          });
+          
+          if (existingFiles.length > 0) {
+            // Found a valid file, use the most recent one
+            const mostRecentFile = existingFiles.sort().reverse()[0];
+            const correctPath = 'uploads/avatars/' + mostRecentFile;
+            await User.updateOne(
+              { _id: user._id },
+              { profileImage: correctPath }
+            );
+            user.profileImage = correctPath;
+            console.log(`✅ Fixed profileImage path to: ${correctPath}`);
+          } else {
+            // No valid files found, clear the broken path
+            await User.updateOne(
+              { _id: user._id },
+              { $unset: { profileImage: '' } }
+            );
+            user.profileImage = null;
+            console.log(`🧹 Cleared broken profileImage path for user ${user._id}`);
+          }
+        } else {
+          // Upload directory doesn't exist, clear the path
+          await User.updateOne(
+            { _id: user._id },
+            { $unset: { profileImage: '' } }
+          );
+          user.profileImage = null;
+          console.log(`🧹 Cleared profileImage path (upload dir missing) for user ${user._id}`);
+        }
+      }
+    }
+
     // Convert to plain object to avoid any serialization issues
     const userObj = user.toObject ? user.toObject() : user;
     res.json(userObj);
@@ -533,13 +581,45 @@ router.post('/repair-avatar', auth, async (req, res) => {
       });
     }
     
-    // Use the most recent file
-    const mostRecentFile = userFiles.sort().reverse()[0];
+    // Use the most recent file that actually exists
+    const existingFiles = [];
+    for (const file of userFiles.sort().reverse()) {
+      const testPath = path.join(uploadDir, file);
+      if (fs.existsSync(testPath)) {
+        existingFiles.push(file);
+      }
+    }
+    
+    if (existingFiles.length === 0) {
+      // No existing files found, clear the profileImage
+      await User.updateOne(
+        { _id: req.user._id },
+        { $unset: { profileImage: '' } }
+      );
+      return res.json({ 
+        message: 'No valid avatar files found. Profile image cleared.',
+        cleared: true,
+        oldPath: user.profileImage
+      });
+    }
+    
+    // Use the most recent existing file
+    const mostRecentFile = existingFiles[0];
     const correctPath = 'uploads/avatars/' + mostRecentFile;
     const fullPath = path.join(__dirname, '..', correctPath);
     
+    // Double-check file exists
     if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ message: 'File not found even after repair attempt' });
+      // This shouldn't happen, but handle it anyway
+      await User.updateOne(
+        { _id: req.user._id },
+        { $unset: { profileImage: '' } }
+      );
+      return res.json({ 
+        message: 'File not found. Profile image cleared.',
+        cleared: true,
+        oldPath: user.profileImage
+      });
     }
     
     // Update the database with the correct path

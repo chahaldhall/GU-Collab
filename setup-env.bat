@@ -6,7 +6,7 @@ if exist ".env" (
     exit /b
 )
 
-echo MONGODB_URI=mongodb://localhost:27017/gucollab > .env
+echo MONGODB_URI=mongodb+srv://chahaldhall:%3CChahal_56%3E@cluster0.xh504ls.mongodb.net/UniCollab > .env
 echo JWT_SECRET=your_super_secret_jwt_key_change_this_in_production_min_32_chars >> .env
 echo PORT=3000 >> .env
 echo EMAIL_HOST=smtp.gmail.com >> .env

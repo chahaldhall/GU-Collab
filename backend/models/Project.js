@@ -36,6 +36,11 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  githubLink: {
+    type: String,
+    default: null,
+    trim: true
+  },
   status: {
     type: String,
     enum: ['Active', 'Completed', 'Cancelled'],

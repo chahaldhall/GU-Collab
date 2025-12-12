@@ -9,7 +9,7 @@ const router = express.Router();
 // Create project
 router.post('/', auth, async (req, res) => {
   try {
-    const { title, description, techStack, type, requiredMembers, deadline } = req.body;
+    const { title, description, techStack, type, requiredMembers, deadline, githubLink } = req.body;
 
     if (!title || !description || !type || !requiredMembers) {
       return res.status(400).json({ message: 'Please fill all required fields' });
@@ -23,7 +23,8 @@ router.post('/', auth, async (req, res) => {
       requiredMembers,
       admin: req.user._id,
       members: [req.user._id],
-      deadline: deadline ? new Date(deadline) : null
+      deadline: deadline ? new Date(deadline) : null,
+      githubLink: githubLink || null
     });
 
     await project.save();
@@ -31,7 +32,7 @@ router.post('/', auth, async (req, res) => {
     await project.populate('members', 'name email profileImage');
 
     // Track visit for student when creating project/hackathon
-    trackVisit(req.user._id);
+    await trackVisit(req.user._id);
 
     res.status(201).json(project);
   } catch (error) {
@@ -88,7 +89,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // Track visit for student when viewing project
-    trackVisit(req.user._id);
+    await trackVisit(req.user._id);
 
     res.json(project);
   } catch (error) {
@@ -109,13 +110,14 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only project owner can update' });
     }
 
-    const { title, description, techStack, requiredMembers, deadline } = req.body;
+    const { title, description, techStack, requiredMembers, deadline, githubLink } = req.body;
 
     if (title) project.title = title;
     if (description) project.description = description;
     if (techStack) project.techStack = Array.isArray(techStack) ? techStack : [];
     if (requiredMembers) project.requiredMembers = requiredMembers;
     if (deadline !== undefined) project.deadline = deadline ? new Date(deadline) : null;
+    if (githubLink !== undefined) project.githubLink = githubLink || null;
 
     await project.save();
     await project.populate('admin', 'name email profileImage');

@@ -38,15 +38,20 @@ async function loadProfile() {
             // If viewing own profile, use /users/me endpoint
             if (currentUserId && currentUserId === targetUserId) {
                 userProfile = await apiRequest('/users/me');
+                console.log('Loaded own profile:', userProfile);
+                console.log('Profile image path:', userProfile.profileImage);
                 displayProfile(userProfile, false); // false = own profile (can edit)
             } else {
                 // Load another user's profile
                 userProfile = await apiRequest(`/users/${userId}`);
+                console.log('Loaded other user profile:', userProfile);
                 displayProfile(userProfile, true); // true = viewing other user's profile (read-only)
             }
         } else {
             // Load current user's profile
             userProfile = await apiRequest('/users/me');
+            console.log('Loaded current user profile:', userProfile);
+            console.log('Profile image path:', userProfile.profileImage);
             displayProfile(userProfile, false); // false = own profile (can edit)
         }
         
@@ -210,15 +215,7 @@ function displayProfile(user, isViewingOtherUser = false) {
         }
     }
     
-    // Hide avatar upload if viewing another user's profile
-    const avatarUpload = document.querySelector('.avatar-upload');
-    if (avatarUpload && isViewingOtherUser) {
-        avatarUpload.style.display = 'none';
-    } else if (avatarUpload && !isViewingOtherUser) {
-        avatarUpload.style.display = 'block';
-    }
-    
-    // Display avatar - always use first letter
+    // Display avatar - always use first letter (image upload feature removed)
     const profileAvatar = document.getElementById('profileAvatar');
     const letter = user.name ? user.name.charAt(0).toUpperCase() : '?';
     profileAvatar.innerHTML = `<div class="profile-avatar-letter">${letter}</div>`;
@@ -637,8 +634,6 @@ function renderCalendar(visits) {
         }
     }, 100);
 }
-
-// Avatar upload removed - using first letter avatars only
 
 // Open edit modal (make globally accessible)
 window.openEditModal = function() {

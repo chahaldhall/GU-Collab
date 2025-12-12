@@ -610,6 +610,14 @@ body {
   justify-content: center;
   cursor: pointer;
   border: 3px solid var(--white);
+  transition: all 0.3s ease;
+  z-index: 10;
+  font-size: 1.2rem;
+}
+
+.avatar-upload:hover {
+  background-color: var(--navy-blue);
+  transform: scale(1.1);
 }
 
 .profile-info h2 {

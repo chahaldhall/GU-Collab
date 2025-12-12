@@ -4,6 +4,14 @@ let currentProject = null;
 let currentUser = null;
 let requests = [];
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Initialize project details page
 document.addEventListener('DOMContentLoaded', async () => {
     if (!requireAuth()) return;
@@ -99,20 +107,21 @@ function displayProjectDetails() {
 
     container.innerHTML = `
         <div class="card">
-            <h1 class="card-title">${currentProject.title}</h1>
+            <h1 class="card-title">${escapeHtml(currentProject.title)}</h1>
             <div style="margin-bottom: 1rem;">
                 <span class="tag" style="background-color: ${currentProject.type === 'Hackathon Team Requirement' ? 'var(--university-orange)' : 'var(--light-grey)'};">
                     ${currentProject.type}
                 </span>
             </div>
-            <p class="card-description" style="-webkit-line-clamp: unset;">${currentProject.description}</p>
+            <p class="card-description" style="-webkit-line-clamp: unset;">${escapeHtml(currentProject.description)}</p>
             <div class="card-tags">
-                ${currentProject.techStack.map(tech => `<span class="tag">${tech}</span>`).join('')}
+                ${currentProject.techStack.map(tech => `<span class="tag">${escapeHtml(tech)}</span>`).join('')}
             </div>
             <div style="margin: 1rem 0;">
-                <p><strong>Created by:</strong> ${currentProject.admin.name}</p>
+                <p><strong>Created by:</strong> ${escapeHtml(currentProject.admin.name)}</p>
                 <p><strong>Members:</strong> ${currentProject.members.length}/${currentProject.requiredMembers}</p>
                 ${currentProject.deadline ? `<p><strong>Deadline:</strong> ${formatDate(currentProject.deadline)}</p>` : ''}
+                ${currentProject.githubLink ? `<p><strong>GitHub:</strong> <a href="${escapeHtml(currentProject.githubLink)}" target="_blank" rel="noopener noreferrer" style="color: var(--navy-blue); text-decoration: none;">${escapeHtml(currentProject.githubLink)}</a> <span style="color: #666; font-size: 0.9em;">🔗</span></p>` : ''}
                 <p><strong>Created:</strong> ${formatDate(currentProject.createdAt)}</p>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
@@ -127,10 +136,10 @@ function displayProjectDetails() {
                     <div class="member-item">
                         ${getAvatarHTML(member, 30)}
                         <div>
-                            <strong>${member.name}</strong>
+                            <strong>${escapeHtml(member.name)}</strong>
                             ${(member._id || member) === (currentProject.admin._id || currentProject.admin) ? '<span style="color: var(--university-orange);">(Admin)</span>' : ''}
                             <br>
-                            <small style="color: #666;">${member.email}</small>
+                            <small style="color: #666;">${escapeHtml(member.email)}</small>
                         </div>
                         ${isAdmin && (member._id || member) !== (currentProject.admin._id || currentProject.admin) ? 
                             `<button class="btn btn-outline" style="margin-left: auto; padding: 0.25rem 0.75rem;" onclick="removeMember('${member._id || member}')">Remove</button>` : ''}
@@ -291,10 +300,13 @@ function editProject() {
     const techStack = prompt('Enter tech stack (comma separated):', currentProject.techStack.join(', '));
     if (!techStack) return;
 
+    const githubLink = prompt('Enter GitHub repository link (leave empty to remove):', currentProject.githubLink || '');
+
     updateProject({
         title,
         description,
-        techStack: techStack.split(',').map(t => t.trim())
+        techStack: techStack.split(',').map(t => t.trim()),
+        githubLink: githubLink.trim() || null
     });
 }
 

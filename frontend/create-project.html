@@ -67,6 +67,10 @@
                     <label class="form-label" for="deadline">Deadline (for Hackathons)</label>
                     <input type="date" id="deadline" class="form-input">
                 </div>
+                <div class="form-group">
+                    <label class="form-label" for="githubLink">GitHub Repository Link (Optional)</label>
+                    <input type="url" id="githubLink" class="form-input" placeholder="https://github.com/username/repository">
+                </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Create Project</button>
                 <button type="button" class="btn btn-outline" onclick="window.location.href='index.html'" style="width: 100%; margin-top: 0.5rem;">Cancel</button>
             </form>
@@ -115,6 +119,7 @@
                 const type = document.getElementById('type').value;
                 const requiredMembers = parseInt(document.getElementById('requiredMembers').value);
                 const deadline = document.getElementById('deadline').value;
+                const githubLink = document.getElementById('githubLink').value.trim() || null;
                 
                 try {
                     const project = await apiRequest('/projects', {
@@ -125,10 +130,13 @@
                             techStack,
                             type,
                             requiredMembers,
-                            deadline: deadline || null
+                            deadline: deadline || null,
+                            githubLink
                         })
                     });
                     
+                    // Visit is tracked on backend, calendar will update when profile is viewed
+                    alert('Project created successfully!');
                     window.location.href = `project-details.html?id=${project._id}`;
                 } catch (error) {
                     errorDiv.textContent = error.message;

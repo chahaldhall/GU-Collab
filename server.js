@@ -22,6 +22,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'frontend')));
 // Serve uploaded files with proper headers
+// IMPORTANT: This must come before the catch-all route to ensure uploads are served correctly
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, filePath) => {
     // Set CORS headers for images
@@ -32,6 +33,25 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   },
   dotfiles: 'allow' // Allow serving files that start with dot
 }));
+
+// Explicit route handler for uploads as fallback (static middleware should handle it, but this ensures it works)
+app.get('/uploads/*', (req, res, next) => {
+  const filePath = path.join(__dirname, req.path);
+  console.log('Upload request:', req.path, '->', filePath, 'exists:', fs.existsSync(filePath));
+  
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    return res.sendFile(filePath);
+  }
+  
+  // If file not found, log for debugging
+  console.error('Upload file not found:', req.path, 'Full path:', filePath);
+  res.status(404).json({ 
+    error: 'File not found', 
+    path: req.path,
+    fullPath: filePath,
+    exists: fs.existsSync(filePath)
+  });
+});
 
 // Debug route to test image serving
 app.get('/test-image/:filename', (req, res) => {
@@ -52,7 +72,7 @@ app.get('/test-image/:filename', (req, res) => {
 });
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gucollab', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://chahaldhall:%3CChahal_56%3E@cluster0.xh504ls.mongodb.net/UniCollab', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -79,6 +99,11 @@ app.use('/api/announcements', require('./backend/routes/announcements'));
 app.get('*', (req, res, next) => {
   // Don't serve index.html for API routes
   if (req.path.startsWith('/api')) {
+    return next();
+  }
+  
+  // Don't interfere with uploads - they're handled by static middleware above
+  if (req.path.startsWith('/uploads')) {
     return next();
   }
   

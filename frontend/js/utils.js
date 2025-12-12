@@ -156,9 +156,9 @@ function formatTime(date) {
   });
 }
 
-// Get avatar HTML - always use first letter
+// Get avatar HTML - always use first letter (image upload feature removed)
 function getAvatarHTML(user, size = 40) {
-  const letter = user.name ? user.name.charAt(0).toUpperCase() : '?';
+  const letter = user && user.name ? user.name.charAt(0).toUpperCase() : '?';
   return `<div class="avatar-letter" style="width: ${size}px; height: ${size}px; font-size: ${size * 0.3}px;">${letter}</div>`;
 }
 
