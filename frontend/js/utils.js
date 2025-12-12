@@ -198,16 +198,23 @@ function initSocket() {
   
   try {
     // Use Render backend URL from config
-    const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+    const backendUrl = window.BACKEND_URL || 'https://gu-collab.onrender.com';
     const socketUrl = backendUrl;
     
-    // Create new socket instance
+    console.log('🔌 Connecting to Socket.IO server:', socketUrl);
+    
+    // Create new socket instance with better configuration for Render/Vercel
     socketInstance = io(socketUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
-      timeout: 20000
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity, // Keep trying to reconnect
+      timeout: 20000,
+      forceNew: false, // Reuse existing connection if available
+      upgrade: true, // Allow upgrade from polling to websocket
+      rememberUpgrade: true,
+      withCredentials: false // Important for cross-origin (Vercel to Render)
     });
     
     socketInstance.on('connect', () => {
@@ -216,10 +223,17 @@ function initSocket() {
     
     socketInstance.on('disconnect', (reason) => {
       console.log('❌ Socket.IO disconnected:', reason);
+      // Try to reconnect if it wasn't a manual disconnect
+      if (reason === 'io server disconnect') {
+        // Server disconnected, reconnect manually
+        socketInstance.connect();
+      }
     });
     
     socketInstance.on('connect_error', (error) => {
       console.error('❌ Socket.IO connection error:', error);
+      console.error('Error type:', error.type);
+      console.error('Error description:', error.description);
     });
     
     socketInstance.on('reconnect', (attemptNumber) => {
@@ -228,6 +242,10 @@ function initSocket() {
     
     socketInstance.on('reconnect_error', (error) => {
       console.error('❌ Socket.IO reconnect error:', error);
+    });
+    
+    socketInstance.on('reconnect_failed', () => {
+      console.error('❌ Socket.IO reconnection failed - please refresh the page');
     });
     
     return socketInstance;

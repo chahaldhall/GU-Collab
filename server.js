@@ -11,13 +11,25 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    origin: process.env.FRONTEND_URL || "https://gu-collab.vercel.app" || "*", 
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["*"]
+  },
+  allowEIO3: true, // Allow Engine.IO v3 clients (older Socket.IO clients)
+  transports: ['websocket', 'polling'], // Enable both transports
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  cookie: false // Disable cookies for better cross-origin support
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "https://gu-collab.vercel.app" || "*",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'frontend')));

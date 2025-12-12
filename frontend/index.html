@@ -146,30 +146,36 @@
         </div>
     </div>
 
+    <script src="js/config.js"></script>
     <script>
-        // Load Socket.IO from Render backend URL
+        // Load Socket.IO from Render backend URL (after config.js loads)
         (function() {
             // Remove any existing socket.io script tags to prevent duplicates
             const existingScripts = document.querySelectorAll('script[src*="socket.io"]');
             existingScripts.forEach(script => script.remove());
             
             // Use backend URL from config (set in config.js)
-            const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+            const backendUrl = window.BACKEND_URL || 'https://gu-collab.onrender.com';
             const socketIoUrl = `${backendUrl}/socket.io/socket.io.js`;
+            
+            console.log('📡 Loading Socket.IO from:', socketIoUrl);
             
             const script = document.createElement('script');
             script.src = socketIoUrl;
+            script.async = true;
             script.onerror = function() {
-                console.error('Failed to load Socket.IO from:', socketIoUrl);
+                console.error('❌ Failed to load Socket.IO from:', socketIoUrl);
                 console.error('Make sure the backend server is running on Render');
             };
             script.onload = function() {
                 console.log('✅ Socket.IO loaded successfully from:', socketIoUrl);
+                if (typeof io !== 'undefined') {
+                    console.log('✅ Socket.IO client is ready');
+                }
             };
             document.head.appendChild(script);
         })();
     </script>
-    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/profile-search.js"></script>

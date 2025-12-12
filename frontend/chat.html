@@ -58,30 +58,44 @@
         </div>
     </div>
 
+    <script src="js/config.js"></script>
     <script>
-        // Load Socket.IO from Render backend URL
+        // Load Socket.IO from Render backend URL (after config.js loads)
         (function() {
             // Remove any existing socket.io script tags to prevent duplicates
             const existingScripts = document.querySelectorAll('script[src*="socket.io"]');
             existingScripts.forEach(script => script.remove());
             
             // Use backend URL from config (set in config.js)
-            const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+            const backendUrl = window.BACKEND_URL || 'https://gu-collab.onrender.com';
             const socketIoUrl = `${backendUrl}/socket.io/socket.io.js`;
+            
+            console.log('📡 Loading Socket.IO from:', socketIoUrl);
             
             const script = document.createElement('script');
             script.src = socketIoUrl;
+            script.async = true;
             script.onerror = function() {
-                console.error('Failed to load Socket.IO from:', socketIoUrl);
+                console.error('❌ Failed to load Socket.IO from:', socketIoUrl);
                 console.error('Make sure the backend server is running on Render');
+                // Show user-friendly error
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #f44336; color: white; padding: 1rem; text-align: center; z-index: 10000;';
+                errorDiv.textContent = '⚠️ Chat connection failed. Please refresh the page.';
+                document.body.insertBefore(errorDiv, document.body.firstChild);
             };
             script.onload = function() {
                 console.log('✅ Socket.IO loaded successfully from:', socketIoUrl);
+                // Check if io is available
+                if (typeof io !== 'undefined') {
+                    console.log('✅ Socket.IO client is ready');
+                } else {
+                    console.error('❌ Socket.IO library loaded but io is not defined');
+                }
             };
             document.head.appendChild(script);
         })();
     </script>
-    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/profile-search.js"></script>
