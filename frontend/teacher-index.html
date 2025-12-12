@@ -149,19 +149,29 @@
     </div>
 
     <script>
-        // Load Socket.IO with error handling
+        // Load Socket.IO from Render backend URL
         (function() {
+            // Remove any existing socket.io script tags to prevent duplicates
+            const existingScripts = document.querySelectorAll('script[src*="socket.io"]');
+            existingScripts.forEach(script => script.remove());
+            
+            // Use backend URL from config (set in config.js)
+            const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+            const socketIoUrl = `${backendUrl}/socket.io/socket.io.js`;
+            
             const script = document.createElement('script');
-            script.src = '/socket.io/socket.io.js';
+            script.src = socketIoUrl;
             script.onerror = function() {
-                console.warn('Socket.IO library not loaded - chat features may not work. Make sure the server is running on port 3000.');
+                console.error('Failed to load Socket.IO from:', socketIoUrl);
+                console.error('Make sure the backend server is running on Render');
             };
             script.onload = function() {
-                console.log('Socket.IO library loaded successfully');
+                console.log('✅ Socket.IO loaded successfully from:', socketIoUrl);
             };
             document.head.appendChild(script);
         })();
     </script>
+    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/teacher-dashboard.js"></script>
     <script src="js/profile-search.js"></script>

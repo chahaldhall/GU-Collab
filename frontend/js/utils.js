@@ -1,18 +1,10 @@
 // Utility functions
 
-// Use absolute URL to ensure requests go to the correct server port (3000)
-// If page is served from a different port (like Live Server on 5501), use full URL
+// Use Render backend URL from config
 const getApiBase = () => {
-  const port = window.location.port;
-  const hostname = window.location.hostname;
-  
-  // If running on a different port or localhost, use full URL to port 3000
-  if (port && port !== '3000' && port !== '') {
-    return `http://${hostname}:3000/api`;
-  }
-  
-  // Otherwise use relative path (when served from same server)
-  return '/api';
+  // Use backend URL from config (set in config.js)
+  const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+  return `${backendUrl}/api`;
 };
 
 const API_BASE = getApiBase();
@@ -101,7 +93,7 @@ async function apiRequest(endpoint, options = {}) {
     
     // Handle network errors
     if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-      throw new Error('Cannot connect to server. Please check if the server is running on port 3000.');
+      throw new Error('Cannot connect to server. Please check if the backend server is running.');
     }
     
     // If it's already an Error object, re-throw it
@@ -205,16 +197,9 @@ function initSocket() {
   }
   
   try {
-    // Determine correct Socket.IO server URL
-    const port = window.location.port;
-    const hostname = window.location.hostname;
-    let socketUrl;
-    
-    if (port && port !== '3000' && port !== '') {
-      socketUrl = `http://${hostname}:3000`;
-    } else {
-      socketUrl = undefined; // Use same origin
-    }
+    // Use Render backend URL from config
+    const backendUrl = window.BACKEND_URL || 'https://your-backend-app.onrender.com';
+    const socketUrl = backendUrl;
     
     // Create new socket instance
     socketInstance = io(socketUrl, {
