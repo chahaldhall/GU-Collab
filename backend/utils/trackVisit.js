@@ -14,6 +14,8 @@ async function trackVisit(userId) {
       return;
     }
 
+    // Use UTC date string (YYYY-MM-DD) for consistency
+    // This ensures the same date is used regardless of server timezone
     const today = new Date().toISOString().split('T')[0];
     
     if (!user.visits || !Array.isArray(user.visits)) {

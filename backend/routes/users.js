@@ -82,6 +82,7 @@ router.get('/me', auth, async (req, res) => {
     // Track visit - only for students
     if (user.role === 'student') {
       try {
+        // Use UTC date string (YYYY-MM-DD) for consistency
         const today = new Date().toISOString().split('T')[0];
         if (!user.visits || !Array.isArray(user.visits)) {
           user.visits = [];

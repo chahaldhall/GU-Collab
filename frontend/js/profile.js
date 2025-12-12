@@ -82,6 +82,9 @@ async function loadProfile() {
             
             // Load and render data (works for both own profile and viewing other students)
             await loadUserProjects(userProfile);
+            // Debug: Log visits data
+            console.log('Calendar visits data:', userProfile.visits);
+            console.log('Visits count:', userProfile.visits ? userProfile.visits.length : 0);
             renderCalendar(userProfile.visits || []);
         }
         return true; // Return true on success
@@ -380,8 +383,11 @@ function renderCalendar(visits) {
     // Create visit map
     const visitMap = {};
     visits.forEach(visit => {
-        visitMap[visit.date] = visit.count || 1;
+        if (visit && visit.date) {
+            visitMap[visit.date] = visit.count || 1;
+        }
     });
+    console.log('Visit map created:', visitMap);
     
     // Get month names
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -498,7 +504,12 @@ function renderCalendar(visits) {
         date.setHours(0, 0, 0, 0);
         
         const dateMonth = date.getMonth();
-        const dateStr = date.toISOString().split('T')[0];
+        // Use UTC date string (YYYY-MM-DD) to match backend format
+        // The backend uses new Date().toISOString().split('T')[0] which gives UTC date
+        // We need to match this by converting our local date to UTC date string
+        // Create a UTC date from the local date's year/month/day values
+        const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0));
+        const dateStr = utcDate.toISOString().split('T')[0];
         const monthName = monthNames[dateMonth];
         const dayOfMonth = date.getDate();
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -513,6 +524,11 @@ function renderCalendar(visits) {
         const weekMonth = weekToMonthMap[weekIndex];
         if (weekMonth === dateMonth && weekIndex < weeksData.length && dayOfWeekIndex < 7) {
             const count = visitMap[dateStr] || 0;
+            // Debug: Log today's activity
+            const todayUTC = new Date().toISOString().split('T')[0];
+            if (dateStr === todayUTC) {
+                console.log(`Today's date (${dateStr}) activity count:`, count, 'Visit map:', visitMap);
+            }
             let level = 0;
             if (count >= 7) level = 4;
             else if (count >= 4) level = 3;
