@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (projectId) {
         await loadProjectDetails(projectId);
-        if (manage === 'true' && currentProject && currentProject.admin._id === currentUser.id) {
+        // Auto-load requests if user is admin
+        if (currentProject && currentProject.admin._id === currentUser.id) {
             await loadRequests();
         }
     }
@@ -79,7 +80,6 @@ function displayProjectDetails() {
     if (isAdmin) {
         actionsHTML = `
             <button class="btn btn-primary" onclick="window.location.href='chat.html?projectId=${String(currentProject._id || currentProject.id || '')}'">Open Chat</button>
-            <button class="btn btn-secondary" onclick="loadRequests(); document.getElementById('manageSection').style.display='block';">Manage Team</button>
             <button class="btn btn-outline" onclick="editProject()">Edit Project</button>
             <button class="btn btn-outline" onclick="deleteProject()" style="background-color: #dc3545; color: white; border-color: #dc3545;">Delete Project</button>
         `;
@@ -153,12 +153,14 @@ function displayProjectDetails() {
             </div>
         </div>
 
-        <div class="card" id="manageSection" style="display: none;">
+        ${isAdmin ? `
+        <div class="card" id="joinRequestsSection">
             <h3 class="card-title">Join Requests</h3>
             <div id="requestsList">
                 <div class="loading">Loading requests...</div>
             </div>
         </div>
+        ` : ''}
     `;
 }
 
@@ -185,12 +187,12 @@ function displayRequests() {
     );
     
     if (pendingRequests.length === 0) {
-        container.innerHTML = '<p style="color: #666;">No pending requests for this project</p>';
+        container.innerHTML = '<p style="color: #666; padding: 1rem;">No pending requests for this project</p>';
         return;
     }
 
     container.innerHTML = pendingRequests.map(request => `
-        <div class="card" style="margin-bottom: 1rem;">
+        <div class="card" style="margin-bottom: 1rem;" id="request-${request._id}">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                 ${getAvatarHTML(request.userId, 40)}
                 <div style="flex: 1;">
@@ -256,9 +258,34 @@ async function acceptRequest(requestId) {
     try {
         await apiRequest(`/requests/accept/${requestId}`, { method: 'PUT' });
         const projectId = String(currentProject._id || currentProject.id || '');
+        
+        // Remove request from UI immediately with animation
+        const requestElement = document.getElementById(`request-${requestId}`);
+        if (requestElement) {
+            requestElement.style.transition = 'opacity 0.3s, transform 0.3s';
+            requestElement.style.opacity = '0';
+            requestElement.style.transform = 'translateX(-20px)';
+            setTimeout(async () => {
+                requestElement.remove();
+                // Reload requests to update list
+                await loadRequests();
+                // Reload project to update member count
+                await loadProjectDetails(projectId);
+                // Reload notifications to remove the join request notification
+                if (typeof loadNotifications === 'function') {
+                    await loadNotifications();
+                }
+            }, 300);
+        } else {
+            // Fallback: reload everything
+            await loadRequests();
+            await loadProjectDetails(projectId);
+            if (typeof loadNotifications === 'function') {
+                await loadNotifications();
+            }
+        }
+        
         alert('Request accepted! Member added to project.');
-        await loadProjectDetails(projectId);
-        await loadRequests();
     } catch (error) {
         alert('Error accepting request: ' + error.message);
         console.error('Error:', error);
@@ -271,8 +298,31 @@ async function rejectRequest(requestId) {
     
     try {
         await apiRequest(`/requests/reject/${requestId}`, { method: 'PUT' });
+        
+        // Remove request from UI immediately with animation
+        const requestElement = document.getElementById(`request-${requestId}`);
+        if (requestElement) {
+            requestElement.style.transition = 'opacity 0.3s, transform 0.3s';
+            requestElement.style.opacity = '0';
+            requestElement.style.transform = 'translateX(-20px)';
+            setTimeout(async () => {
+                requestElement.remove();
+                // Reload requests to update list
+                await loadRequests();
+                // Reload notifications to remove the join request notification
+                if (typeof loadNotifications === 'function') {
+                    await loadNotifications();
+                }
+            }, 300);
+        } else {
+            // Fallback: reload requests
+            await loadRequests();
+            if (typeof loadNotifications === 'function') {
+                await loadNotifications();
+            }
+        }
+        
         alert('Request rejected.');
-        await loadRequests();
     } catch (error) {
         alert('Error rejecting request: ' + error.message);
         console.error('Error:', error);

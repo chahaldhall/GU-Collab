@@ -127,6 +127,14 @@ router.put('/accept/:id', auth, async (req, res) => {
     request.status = 'Accepted';
     await request.save();
 
+    // Delete the join_request notification for project admin
+    await Notification.deleteMany({
+      userId: project.admin,
+      type: 'join_request',
+      projectId: project._id,
+      read: false // Only delete unread notifications
+    });
+
     // Create notification for requester
     const notification = new Notification({
       userId: request.userId,
@@ -160,6 +168,14 @@ router.put('/reject/:id', auth, async (req, res) => {
 
     request.status = 'Rejected';
     await request.save();
+
+    // Delete the join_request notification for project admin
+    await Notification.deleteMany({
+      userId: project.admin,
+      type: 'join_request',
+      projectId: project._id,
+      read: false // Only delete unread notifications
+    });
 
     res.json(request);
   } catch (error) {
