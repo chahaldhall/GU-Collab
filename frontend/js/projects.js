@@ -132,19 +132,24 @@ function displayProjectDetails() {
         <div class="card">
             <h3 class="card-title">Team Members</h3>
             <div id="membersList">
-                ${currentProject.members.map(member => `
+                ${currentProject.members.map(member => {
+                    const memberId = String(member._id || member || '');
+                    return `
                     <div class="member-item">
-                        ${getAvatarHTML(member, 30)}
-                        <div>
-                            <strong>${escapeHtml(member.name)}</strong>
-                            ${(member._id || member) === (currentProject.admin._id || currentProject.admin) ? '<span style="color: var(--university-orange);">(Admin)</span>' : ''}
-                            <br>
-                            <small style="color: #666;">${escapeHtml(member.email)}</small>
+                        <div class="member-profile-link" onclick="viewMemberProfile('${memberId}')" title="Click to view profile">
+                            ${getAvatarHTML(member, 30)}
+                            <div>
+                                <strong style="color: var(--navy-blue);">${escapeHtml(member.name)}</strong>
+                                ${(member._id || member) === (currentProject.admin._id || currentProject.admin) ? '<span style="color: var(--university-orange);">(Admin)</span>' : ''}
+                                <br>
+                                <small style="color: #666;">${escapeHtml(member.email)}</small>
+                            </div>
                         </div>
                         ${isAdmin && (member._id || member) !== (currentProject.admin._id || currentProject.admin) ? 
-                            `<button class="btn btn-outline" style="margin-left: auto; padding: 0.25rem 0.75rem;" onclick="removeMember('${member._id || member}')">Remove</button>` : ''}
+                            `<button class="btn btn-outline" style="padding: 0.25rem 0.75rem;" onclick="event.stopPropagation(); removeMember('${memberId}')">Remove</button>` : ''}
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         </div>
 
@@ -359,6 +364,19 @@ async function deleteProject() {
         console.error('Error:', error);
     }
 }
+
+// View member profile
+function viewMemberProfile(memberId) {
+    if (!memberId) {
+        console.error('No member ID provided');
+        return;
+    }
+    // Navigate to profile page with userId parameter
+    window.location.href = `profile.html?userId=${memberId}`;
+}
+
+// Make viewMemberProfile globally accessible
+window.viewMemberProfile = viewMemberProfile;
 
 // Toggle user dropdown (make globally accessible)
 window.toggleUserDropdown = function() {

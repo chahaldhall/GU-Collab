@@ -9,9 +9,25 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+// Socket.IO CORS configuration - allow both local and production
+const socketIoOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      process.env.FRONTEND_URL || 'https://gu-collab.vercel.app'
+    ].filter(Boolean)
+  : [
+      'https://gu-collab.vercel.app',  // Production frontend
+      'http://127.0.0.1:5501',         // Local development (VS Code Live Server)
+      'http://localhost:5501',         // Local development (alternative)
+      'http://127.0.0.1:3000',         // Local development (if running on port 3000)
+      'http://localhost:3000',         // Local development (alternative port 3000)
+      'http://127.0.0.1:5500',         // Local development (alternative port)
+      'http://localhost:5500',         // Local development (alternative port)
+      process.env.FRONTEND_URL          // From environment variable
+    ].filter(Boolean);
+
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://gu-collab.vercel.app" || "*", 
+    origin: socketIoOrigins.length === 1 ? socketIoOrigins[0] : socketIoOrigins,
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["*"]
@@ -25,7 +41,35 @@ const io = socketIo(server, {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "https://gu-collab.vercel.app" || "*",
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins for both development and production
+    const allowedOrigins = [
+      'https://gu-collab.vercel.app',  // Production frontend
+      'http://127.0.0.1:5501',         // Local development (VS Code Live Server)
+      'http://localhost:5501',         // Local development (alternative)
+      'http://127.0.0.1:3000',         // Local development (if running on port 3000)
+      'http://localhost:3000',         // Local development (alternative port 3000)
+      'http://127.0.0.1:5500',         // Local development (alternative port)
+      'http://localhost:5500',         // Local development (alternative port)
+      process.env.FRONTEND_URL          // From environment variable
+    ].filter(Boolean); // Remove any undefined/null values
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In development mode, allow all origins for easier testing
+      if (process.env.NODE_ENV !== 'production') {
+        callback(null, true);
+      } else {
+        // In production, only allow specific origins
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
