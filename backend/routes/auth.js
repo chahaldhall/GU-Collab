@@ -13,8 +13,26 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  // Add connection timeout to prevent hanging
+  connectionTimeout: 5000, // 5 seconds
+  greetingTimeout: 5000,
+  socketTimeout: 5000
 });
+
+// Verify email configuration on startup
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  transporter.verify(function (error, success) {
+    if (error) {
+      console.error('❌ Email service configuration error:', error);
+      console.error('⚠️  Emails will not be sent. Please check EMAIL_USER and EMAIL_PASS in .env file');
+    } else {
+      console.log('✅ Email service is ready to send emails');
+    }
+  });
+} else {
+  console.warn('⚠️  Email service not configured (EMAIL_USER or EMAIL_PASS missing)');
+}
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -168,71 +186,7 @@ router.post('/signup', async (req, res) => {
       }
     }
 
-    // ✅ Try to send welcome email (optional - won't block signup if it fails)
-    // Email sending is optional - account will be created even if email fails
-    let emailSent = false;
-    let emailError = null;
-
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      try {
-        // Send welcome email
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email.toLowerCase().trim(),
-          subject: 'Welcome to GUCollab - Account Created Successfully!',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f7;">
-              <div style="background-color: #0A1A44; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0;">Welcome to GUCollab!</h1>
-              </div>
-              <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
-                <p style="font-size: 16px; color: #333;">Hello <strong>${name}</strong>,</p>
-                <p style="font-size: 16px; color: #333;">Your account has been successfully created on GUCollab!</p>
-                
-                <div style="background-color: #F5F5F7; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                  <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-                  <p style="margin: 5px 0;"><strong>Course:</strong> ${course}</p>
-                  <p style="margin: 5px 0;"><strong>Roll Number:</strong> ${rollNumber}</p>
-                </div>
-                
-                <p style="font-size: 16px; color: #333;">You can now:</p>
-                <ul style="font-size: 16px; color: #333;">
-                  <li>Create and join projects</li>
-                  <li>Participate in hackathons</li>
-                  <li>Connect with other students</li>
-                  <li>Showcase your completed projects</li>
-                </ul>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${process.env.FRONTEND_URL || 'https://gu-collab.vercel.app'}/login.html" 
-                     style="background-color: #F7941D; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                    Login to Your Account
-                  </a>
-                </div>
-                
-                <p style="font-size: 14px; color: #666; margin-top: 30px;">If you have any questions, feel free to contact us.</p>
-                <p style="font-size: 14px; color: #666; margin: 0;">Best regards,<br>The GUCollab Team</p>
-              </div>
-              <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
-                <p>This is an automated email. Please do not reply.</p>
-              </div>
-            </div>
-          `
-        });
-        
-        emailSent = true;
-        console.log(`✅ Welcome email sent successfully to: ${email}`);
-      } catch (emailErr) {
-        emailError = emailErr;
-        console.error('❌ Failed to send welcome email:', emailErr);
-        console.error('⚠️  Account will still be created despite email failure');
-        // Don't reject signup - continue with account creation
-      }
-    } else {
-      console.warn('⚠️  Email service not configured (EMAIL_USER or EMAIL_PASS missing). Account will be created without sending welcome email.');
-    }
-
-    // ✅ Create user account (regardless of email status)
+    // ✅ Create user account FIRST (fast response)
     // Create new user object
     const userData = {
       name: name.trim(),
@@ -247,7 +201,6 @@ router.post('/signup', async (req, res) => {
 
     // Create new user
     const user = new User(userData);
-
     await user.save();
 
     // Generate token
@@ -264,18 +217,74 @@ router.post('/signup', async (req, res) => {
     };
     
     console.log(`✅ User account created successfully: ${email}`);
-    if (emailSent) {
-      console.log(`✅ Welcome email was sent to: ${email}`);
-    } else if (emailError) {
-      console.warn(`⚠️  Account created but welcome email failed: ${emailError.message}`);
+    
+    // ✅ Send welcome email in BACKGROUND (non-blocking)
+    // Don't wait for email - send it asynchronously so signup is fast
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      // Fire and forget - don't await, send in background
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email.toLowerCase().trim(),
+        subject: 'Welcome to GUCollab - Account Created Successfully!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f7;">
+            <div style="background-color: #0A1A44; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0;">Welcome to GUCollab!</h1>
+            </div>
+            <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
+              <p style="font-size: 16px; color: #333;">Hello <strong>${name}</strong>,</p>
+              <p style="font-size: 16px; color: #333;">Your account has been successfully created on GUCollab!</p>
+              
+              <div style="background-color: #F5F5F7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 5px 0;"><strong>Course:</strong> ${course}</p>
+                <p style="margin: 5px 0;"><strong>Roll Number:</strong> ${rollNumber}</p>
+              </div>
+              
+              <p style="font-size: 16px; color: #333;">You can now:</p>
+              <ul style="font-size: 16px; color: #333;">
+                <li>Create and join projects</li>
+                <li>Participate in hackathons</li>
+                <li>Connect with other students</li>
+                <li>Showcase your completed projects</li>
+              </ul>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL || 'https://gu-collab.vercel.app'}/login.html" 
+                   style="background-color: #F7941D; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Login to Your Account
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666; margin-top: 30px;">If you have any questions, feel free to contact us.</p>
+              <p style="font-size: 14px; color: #666; margin: 0;">Best regards,<br>The GUCollab Team</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+              <p>This is an automated email. Please do not reply.</p>
+            </div>
+          </div>
+        `
+      }).then(() => {
+        console.log(`✅ Welcome email sent successfully to: ${email}`);
+      }).catch((emailErr) => {
+        console.error('❌ Failed to send welcome email:', emailErr);
+        console.error(`⚠️  Email failed for user: ${email}, but account is already created`);
+        // Log detailed error for debugging
+        if (emailErr.response) {
+          console.error('Email error response:', emailErr.response);
+        }
+        if (emailErr.code) {
+          console.error('Email error code:', emailErr.code);
+        }
+      });
     } else {
-      console.warn(`⚠️  Account created but email service not configured`);
+      console.warn('⚠️  Email service not configured (EMAIL_USER or EMAIL_PASS missing). Account created without sending welcome email.');
     }
     
+    // Return response immediately (don't wait for email)
     res.status(201).json({
       token,
-      user: userResponse,
-      emailSent: emailSent // Include email status in response
+      user: userResponse
     });
   } catch (error) {
     console.error('Signup error:', error);
