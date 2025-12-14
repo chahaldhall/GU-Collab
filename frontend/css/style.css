@@ -848,6 +848,33 @@ body {
   margin-top: 0.25rem;
 }
 
+.chat-date-separator {
+  text-align: center;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.chat-date-separator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background-color: #ddd;
+}
+
+.chat-date-separator span {
+  background-color: var(--light-grey);
+  padding: 0.4rem 1rem;
+  color: #666;
+  font-size: 0.8rem;
+  position: relative;
+  display: inline-block;
+  border-radius: 7.5px;
+  font-weight: 500;
+}
+
 .chat-message-text {
   word-wrap: break-word;
   white-space: pre-wrap;

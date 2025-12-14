@@ -87,6 +87,43 @@ async function loadMessages(projectId) {
     }
 }
 
+// Format time only (like WhatsApp - no date in message)
+function formatChatTime(date) {
+    if (!date) return 'Just now';
+    
+    const msgDate = new Date(date);
+    const timeStr = msgDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    return timeStr;
+}
+
+// Get date string for separator
+function getDateString(date) {
+    if (!date) return '';
+    const msgDate = new Date(date);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+    
+    if (msgDateOnly.getTime() === today.getTime()) {
+        return 'Today';
+    } else if (msgDateOnly.getTime() === yesterday.getTime()) {
+        return 'Yesterday';
+    } else {
+        return msgDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: msgDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+    }
+}
+
 // Display messages
 function displayMessages() {
     const container = document.getElementById('chatMessages');
@@ -95,15 +132,29 @@ function displayMessages() {
         return;
     }
     
-    container.innerHTML = messages.map(msg => {
+    let html = '';
+    let lastDate = '';
+    
+    messages.forEach((msg, index) => {
         const userId = String(msg.userId?._id || msg.userId || '');
         const currentUserId = String(currentUser.id || currentUser._id || '');
         const isOwn = userId === currentUserId;
         const userName = msg.userName || msg.userId?.name || 'Unknown';
         const messageText = escapeHtml(msg.message || '');
-        const timestamp = msg.timestamp ? formatTime(msg.timestamp) : 'Just now';
+        const timestamp = formatChatTime(msg.timestamp);
         
-        return `
+        // Add date separator if date changed
+        const currentDate = getDateString(msg.timestamp);
+        if (currentDate && currentDate !== lastDate) {
+            html += `
+                <div class="chat-date-separator">
+                    <span>${currentDate}</span>
+                </div>
+            `;
+            lastDate = currentDate;
+        }
+        
+        html += `
             <div class="chat-message ${isOwn ? 'own' : ''}">
                 <div class="chat-message-header">
                     ${!isOwn ? `<strong>${escapeHtml(userName)}</strong>` : '<strong>You</strong>'}
@@ -112,8 +163,9 @@ function displayMessages() {
                 <div class="chat-message-time">${timestamp}</div>
             </div>
         `;
-    }).join('');
+    });
     
+    container.innerHTML = html;
     scrollToBottom();
 }
 
