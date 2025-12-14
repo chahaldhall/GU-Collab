@@ -53,20 +53,24 @@ router.get('/', auth, async (req, res) => {
     // Filter expired hackathons
     // When viewing "All Projects" (no type filter), exclude expired hackathons
     // When viewing "Hackathons" tab, only show active ones
+    // Use start of today for proper date comparison (ignore time component)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of today (00:00:00)
+    
     if (type === 'Hackathon Team Requirement') {
       // Only show active hackathons (deadline >= today or no deadline)
       query.$or = [
-        { deadline: { $gte: new Date() } },
+        { deadline: { $gte: today } },
         { deadline: null }
       ];
     } else if (!type) {
       // When viewing "All Projects", show all regular projects but exclude expired hackathons
-      // Use $and to combine: (not a hackathon) OR (hackathon with active deadline)
+      // Use $or to combine: (not a hackathon) OR (hackathon with active deadline)
       query.$or = [
         { type: { $ne: 'Hackathon Team Requirement' } }, // All non-hackathon projects
         { 
           type: 'Hackathon Team Requirement',
-          deadline: { $gte: new Date() } // Only active hackathons with deadline
+          deadline: { $gte: today } // Only active hackathons with deadline >= today
         },
         {
           type: 'Hackathon Team Requirement',

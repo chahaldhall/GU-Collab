@@ -204,6 +204,24 @@ async function loadProjects() {
             projects = await apiRequest(endpoint);
         }
 
+        // Additional client-side filtering: Remove expired hackathons from "All Projects"
+        if (currentTab === 'all' && projects && projects.length > 0) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // Start of today
+            
+            projects = projects.filter(project => {
+                // If it's a hackathon with a deadline, check if it's expired
+                if (project.type === 'Hackathon Team Requirement' && project.deadline) {
+                    const deadline = new Date(project.deadline);
+                    deadline.setHours(0, 0, 0, 0); // Start of deadline day
+                    // Only show if deadline is today or in the future
+                    return deadline >= now;
+                }
+                // Show all regular projects and hackathons without deadlines
+                return true;
+            });
+        }
+
         if (projects && projects.length > 0) {
             displayProjects(projects);
         } else {
