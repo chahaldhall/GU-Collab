@@ -383,11 +383,27 @@ if (document.getElementById('forgotForm')) {
         e.preventDefault();
         const errorDiv = document.getElementById('errorMessage');
         const successDiv = document.getElementById('successMessage');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn ? submitBtn.textContent : 'Send OTP';
+        
         errorDiv.style.display = 'none';
         successDiv.style.display = 'none';
 
-        const email = document.getElementById('email').value;
+        const email = document.getElementById('email').value.trim();
+        
+        if (!email) {
+            errorDiv.textContent = 'Please enter your email address';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
         resetEmail = email;
+
+        // Show loading state
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending OTP...';
+        }
 
         try {
             const data = await apiRequest('/auth/forgot', {
@@ -401,10 +417,20 @@ if (document.getElementById('forgotForm')) {
             document.getElementById('step2').style.display = 'block';
 
             // Focus first OTP input
-            document.querySelector('.otp-input').focus();
+            setTimeout(() => {
+                const firstOtpInput = document.querySelector('.otp-input');
+                if (firstOtpInput) {
+                    firstOtpInput.focus();
+                }
+            }, 100);
         } catch (error) {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
+            }
             errorDiv.textContent = error.message;
             errorDiv.style.display = 'block';
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     });
 }
@@ -443,11 +469,23 @@ if (document.getElementById('resetPasswordBtn')) {
             return;
         }
 
+        if (newPassword.length < 6) {
+            errorDiv.textContent = 'Password must be at least 6 characters long';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
         if (newPassword !== confirmNewPassword) {
             errorDiv.textContent = 'Passwords do not match';
             errorDiv.style.display = 'block';
             return;
         }
+
+        // Show loading state
+        const resetBtn = document.getElementById('resetPasswordBtn');
+        const originalBtnText = resetBtn.textContent;
+        resetBtn.disabled = true;
+        resetBtn.textContent = 'Resetting...';
 
         try {
             await apiRequest('/auth/reset-password', {
@@ -458,11 +496,14 @@ if (document.getElementById('resetPasswordBtn')) {
             successDiv.textContent = 'Password reset successfully! Redirecting to login...';
             successDiv.style.display = 'block';
             setTimeout(() => {
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
             }, 2000);
         } catch (error) {
+            resetBtn.disabled = false;
+            resetBtn.textContent = originalBtnText;
             errorDiv.textContent = error.message;
             errorDiv.style.display = 'block';
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     });
 }

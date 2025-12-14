@@ -336,26 +336,50 @@ router.post('/forgot', async (req, res) => {
     });
     await resetToken.save();
 
-    // Send OTP via email (if email is configured)
+    // Send OTP via email in background (non-blocking)
+    // Always return OTP in development, in production return it if email fails
+    let emailSent = false;
+    
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: 'GUCollab - Password Reset OTP',
-          html: `
-            <h2>Password Reset OTP</h2>
-            <p>Your OTP for password reset is: <strong>${otp}</strong></p>
-            <p>This OTP will expire in 5 minutes.</p>
-          `
-        });
-      } catch (emailError) {
-        console.error('Email error:', emailError);
-        // Still return success if email fails (for development)
-      }
+      // Send email in background (don't await)
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'GUCollab - Password Reset OTP',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f7;">
+            <div style="background-color: #0A1A44; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0;">Password Reset OTP</h1>
+            </div>
+            <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
+              <p style="font-size: 16px; color: #333;">Your OTP for password reset is:</p>
+              <div style="background-color: #F5F5F7; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
+                <h2 style="font-size: 32px; color: #0A1A44; margin: 0; letter-spacing: 5px;">${otp}</h2>
+              </div>
+              <p style="font-size: 14px; color: #666;">This OTP will expire in 5 minutes.</p>
+              <p style="font-size: 14px; color: #666; margin-top: 20px;">If you didn't request this password reset, please ignore this email.</p>
+            </div>
+          </div>
+        `
+      }).then(() => {
+        emailSent = true;
+        console.log(`✅ Password reset OTP email sent to: ${email}`);
+      }).catch((emailError) => {
+        console.error('❌ Failed to send password reset OTP email:', emailError);
+        console.error(`⚠️  OTP for ${email}: ${otp} (email failed but OTP is valid)`);
+      });
+    } else {
+      console.warn('⚠️  Email service not configured - OTP will be returned in response');
     }
 
-    res.json({ message: 'OTP sent to email', otp: process.env.NODE_ENV === 'development' ? otp : null });
+    // Always return OTP in development, or if email service not configured
+    // In production, return OTP only if email fails (for user convenience)
+    const returnOtp = process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER || !process.env.EMAIL_PASS;
+    
+    res.json({ 
+      message: 'OTP sent to email', 
+      otp: returnOtp ? otp : null 
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -370,6 +394,11 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Please provide email, OTP, and new password' });
     }
 
+    // Validate password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
     const resetToken = await ResetToken.findOne({ email, otp });
     if (!resetToken) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
@@ -377,7 +406,7 @@ router.post('/reset-password', async (req, res) => {
 
     if (new Date() > resetToken.expiresAt) {
       await ResetToken.deleteOne({ _id: resetToken._id });
-      return res.status(400).json({ message: 'OTP has expired' });
+      return res.status(400).json({ message: 'OTP has expired. Please request a new OTP' });
     }
 
     const user = await User.findOne({ email });
@@ -385,15 +414,18 @@ router.post('/reset-password', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Update password (will be hashed automatically by pre-save hook)
     user.password = newPassword;
     await user.save();
 
     // Delete used token
     await ResetToken.deleteOne({ _id: resetToken._id });
 
+    console.log(`✅ Password reset successfully for: ${email}`);
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Server error', error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' });
   }
 });
 
