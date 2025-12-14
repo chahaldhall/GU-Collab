@@ -191,6 +191,7 @@ window.selectLoginRole = function(role) {
             signupLinkContainer.style.display = 'block';
         }
     } else {
+        
         studentTab.classList.remove('active');
         teacherTab.classList.add('active');
         // Hide signup link for teachers (they must be added by admin)
@@ -411,7 +412,22 @@ if (document.getElementById('forgotForm')) {
                 body: JSON.stringify({ email })
             });
 
-            successDiv.textContent = 'OTP sent to your email' + (data.otp ? ` (OTP: ${data.otp})` : '');
+            console.log('OTP Response:', data);
+            
+            // Display OTP prominently
+            if (data.otp) {
+                successDiv.innerHTML = `
+                    <div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; border: 2px solid #0A1A44; margin-bottom: 10px;">
+                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #0A1A44;">OTP sent to your email</p>
+                        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #F7941D; letter-spacing: 5px; text-align: center;">
+                            ${data.otp}
+                        </p>
+                        <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">Enter this OTP below to reset your password</p>
+                    </div>
+                `;
+            } else {
+                successDiv.textContent = 'OTP sent to your email. Please check your inbox.';
+            }
             successDiv.style.display = 'block';
             document.getElementById('step1').style.display = 'none';
             document.getElementById('step2').style.display = 'block';

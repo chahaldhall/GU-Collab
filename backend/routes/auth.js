@@ -8,20 +8,14 @@ const router = express.Router();
 // Email transporter (configure with your email)
 // Email sending is optional - if not configured, signup will still work
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT) || 587,
   secure: false, // false for port 587 (STARTTLS)
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // Timeouts for email sending
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000, // 10 seconds
-  socketTimeout: 10000, // 10 seconds
-  tls: {
-    rejectUnauthorized: false // Allow self-signed certificates
-  }
+  
 });
 
 // Email service is optional - no validation on startup
@@ -221,7 +215,7 @@ router.post('/signup', async (req, res) => {
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       // Fire and forget - don't await, send in background
       transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: `"GUCollab" <${process.env.EMAIL_USER}>`,
         to: email.toLowerCase().trim(),
         subject: 'Welcome to GUCollab - Account Created Successfully!',
         html: `
@@ -336,14 +330,15 @@ router.post('/forgot', async (req, res) => {
     });
     await resetToken.save();
 
-    // Send OTP via email in background (non-blocking)
-    // Always return OTP in development, in production return it if email fails
-    let emailSent = false;
-    
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      // Send email in background (don't await)
-      transporter.sendMail({
-        from: process.env.EMAIL_USER,
+    // Send OTP via email
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({
+        message: "Email service not configured"
+      });
+    }
+
+    const mailOptions = {
+        from: `"GUCollab" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'GUCollab - Password Reset OTP',
         html: `
@@ -361,24 +356,24 @@ router.post('/forgot', async (req, res) => {
             </div>
           </div>
         `
-      }).then(() => {
-        emailSent = true;
-        console.log(`✅ Password reset OTP email sent to: ${email}`);
-      }).catch((emailError) => {
-        console.error('❌ Failed to send password reset OTP email:', emailError);
-        console.error(`⚠️  OTP for ${email}: ${otp} (email failed but OTP is valid)`);
+      };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log("✅ OTP email sent");
+    } catch (error) {
+      console.error("❌ Email sending failed:", error);
+      return res.status(500).json({
+        message: "Failed to send OTP email"
       });
-    } else {
-      console.warn('⚠️  Email service not configured - OTP will be returned in response');
     }
 
-    // Always return OTP in development, or if email service not configured
-    // In production, return OTP only if email fails (for user convenience)
-    const returnOtp = process.env.NODE_ENV === 'development' || !process.env.EMAIL_USER || !process.env.EMAIL_PASS;
+    // Return OTP after successful email send
+    console.log(`📧 OTP generated for ${email}: ${otp} (valid for 5 minutes)`);
     
     res.json({ 
       message: 'OTP sent to email', 
-      otp: returnOtp ? otp : null 
+      
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -399,15 +394,24 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
-    const resetToken = await ResetToken.findOne({ email, otp });
+    // Find reset token (case-insensitive OTP comparison)
+    const resetToken = await ResetToken.findOne({ 
+      email: email.toLowerCase().trim(),
+      otp: otp.trim()
+    });
+    
     if (!resetToken) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      console.error(`❌ Invalid OTP attempt for ${email}. OTP provided: ${otp}`);
+      return res.status(400).json({ message: 'Invalid OTP. Please check and try again.' });
     }
 
     if (new Date() > resetToken.expiresAt) {
       await ResetToken.deleteOne({ _id: resetToken._id });
+      console.error(`❌ Expired OTP attempt for ${email}`);
       return res.status(400).json({ message: 'OTP has expired. Please request a new OTP' });
     }
+    
+    console.log(`✅ Valid OTP verified for ${email}`);
 
     const user = await User.findOne({ email });
     if (!user) {
