@@ -51,19 +51,63 @@ router.get('/', auth, async (req, res) => {
     }
 
     // Filter expired hackathons
+    // When viewing "All Projects" (no type filter), exclude expired hackathons
+    // When viewing "Hackathons" tab, only show active ones
     if (type === 'Hackathon Team Requirement') {
-      query.deadline = { $gte: new Date() };
-    }
-
-    if (search) {
+      // Only show active hackathons (deadline >= today or no deadline)
       query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { deadline: { $gte: new Date() } },
+        { deadline: null }
+      ];
+    } else if (!type) {
+      // When viewing "All Projects", show all regular projects but exclude expired hackathons
+      // Use $and to combine: (not a hackathon) OR (hackathon with active deadline)
+      query.$or = [
+        { type: { $ne: 'Hackathon Team Requirement' } }, // All non-hackathon projects
+        { 
+          type: 'Hackathon Team Requirement',
+          deadline: { $gte: new Date() } // Only active hackathons with deadline
+        },
+        {
+          type: 'Hackathon Team Requirement',
+          deadline: null // Hackathons without deadline (show them)
+        }
       ];
     }
 
+    if (search) {
+      const searchConditions = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+      
+      // If we already have $or for type/hackathon filtering, use $and
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          { $or: searchConditions }
+        ];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
+      }
+    }
+
     if (techStack) {
-      query.techStack = { $in: Array.isArray(techStack) ? techStack : [techStack] };
+      const techConditions = { techStack: { $in: Array.isArray(techStack) ? techStack : [techStack] } };
+      
+      // Combine with existing query conditions
+      if (query.$and) {
+        query.$and.push(techConditions);
+      } else if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          techConditions
+        ];
+        delete query.$or;
+      } else {
+        Object.assign(query, techConditions);
+      }
     }
 
     const projects = await Project.find(query)
