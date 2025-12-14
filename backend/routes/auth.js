@@ -75,25 +75,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Track visit (ensure visits array exists)
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      if (!user.visits || !Array.isArray(user.visits)) {
-        user.visits = [];
-      }
-      
-      const visitIndex = user.visits.findIndex(v => v.date === today);
-      if (visitIndex >= 0) {
-        user.visits[visitIndex].count += 1;
-      } else {
-        user.visits.push({ date: today, count: 1 });
-      }
-      await user.save();
-    } catch (visitError) {
-      // Log but don't fail login if visit tracking fails
-      console.error('Visit tracking error:', visitError);
-    }
-
     // Generate token
     const token = generateToken(user._id);
     
@@ -116,6 +97,32 @@ router.post('/login', async (req, res) => {
     
     console.log('Login successful for:', user.email);
     
+    // Track visit in BACKGROUND (non-blocking) - don't wait for it
+    // This ensures login is fast while still tracking visits
+    if (user.role === 'student') {
+      (async () => {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          if (!user.visits || !Array.isArray(user.visits)) {
+            user.visits = [];
+          }
+          
+          const visitIndex = user.visits.findIndex(v => v.date === today);
+          if (visitIndex >= 0) {
+            user.visits[visitIndex].count += 1;
+          } else {
+            user.visits.push({ date: today, count: 1 });
+          }
+          user.markModified('visits');
+          await user.save();
+        } catch (visitError) {
+          // Log but don't fail login if visit tracking fails
+          console.error('Visit tracking error:', visitError);
+        }
+      })();
+    }
+    
+    // Return response immediately (don't wait for visit tracking)
     res.json({
       token,
       user: userResponse
@@ -373,7 +380,7 @@ router.post('/forgot', async (req, res) => {
     
     res.json({ 
       message: 'OTP sent to email', 
-      
+      otp: otp
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
