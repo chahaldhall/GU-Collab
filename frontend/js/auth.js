@@ -5,9 +5,9 @@ let resetEmail = '';
 // Login form handler
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
+    // Only proceed if login form exists (this page might be signup/forgot-password)
     if (!loginForm) {
-        console.error('Login form not found!');
-        return;
+        return; // Silently return if login form doesn't exist
     }
     
     // Initialize login role selector (student is default)
@@ -207,33 +207,89 @@ document.addEventListener('DOMContentLoaded', () => {
         // Signup form handler (only students can sign up)
         signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
         const errorDiv = document.getElementById('errorMessage');
-        errorDiv.style.display = 'none';
+        const submitButton = signupForm.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton ? submitButton.textContent : 'Sign Up';
+        
+        // Hide previous errors
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
 
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
+        // Show loading state
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Signing up...';
+        }
+
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
         const role = 'student'; // Only students can sign up
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         
         // Get student fields
-        const course = document.getElementById('course').value;
-        const rollNumber = document.getElementById('rollNumber').value;
+        const course = document.getElementById('course').value.trim();
+        const rollNumber = document.getElementById('rollNumber').value.trim();
+        
+        // Validate basic fields
+        if (!name || !email || !password || !confirmPassword) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Please fill all required fields';
+                errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+            return;
+        }
         
         // Validate student fields
         if (!course || !rollNumber) {
-            errorDiv.textContent = 'Please fill all required fields (Course and Roll Number)';
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = 'Please fill all required fields (Course and Roll Number)';
+                errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
             return;
         }
 
         if (password !== confirmPassword) {
-            errorDiv.textContent = 'Passwords do not match';
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = 'Passwords do not match';
+                errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+            return;
+        }
+
+        if (password.length < 6) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Password must be at least 6 characters long';
+                errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
             return;
         }
 
         try {
+            console.log('Submitting signup form...');
             const data = await apiRequest('/auth/signup', {
                 method: 'POST',
                 body: JSON.stringify({ 
@@ -264,6 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log('Signup successful, token saved, redirecting to dashboard...');
             
+            // Show success message briefly
+            if (errorDiv) {
+                errorDiv.style.color = 'green';
+                errorDiv.textContent = 'Signup successful! Redirecting...';
+                errorDiv.style.display = 'block';
+            }
+            
             // Small delay to ensure localStorage is written
             setTimeout(() => {
                 // Check user role and redirect accordingly
@@ -272,28 +335,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     window.location.href = 'index.html';
                 }
-            }, 100);
+            }, 500);
         } catch (error) {
             console.error('Signup error:', error);
+            
+            // Reset button state
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+            }
+            
             // Show user-friendly error message
             let errorMessage = error.message || 'An error occurred during signup';
             
             // Handle specific error cases
-            if (errorMessage.includes('Email must be from')) {
+            if (errorMessage.includes('Email must be from') || errorMessage.includes('geetauniversity')) {
                 errorMessage = 'Email must end with @geetauniversity.edu.in';
             } else if (errorMessage.includes('already exists') || errorMessage.includes('already registered')) {
                 errorMessage = 'This email or roll number is already registered. Please use different credentials.';
-            } else if (errorMessage.includes('fill all fields')) {
+            } else if (errorMessage.includes('fill all fields') || errorMessage.includes('required fields')) {
                 errorMessage = 'Please fill all required fields';
-            } else if (errorMessage.includes('Server error')) {
-                errorMessage = 'Server error. Please check if MongoDB is running and try again.';
+            } else if (errorMessage.includes('Server error') || errorMessage.includes('MongoDB')) {
+                errorMessage = 'Server error. Please check if the server is running and try again.';
+            } else if (errorMessage.includes('Failed to send welcome email') || errorMessage.includes('email')) {
+                errorMessage = 'Failed to send welcome email. Please check your email address and try again.';
+            } else if (errorMessage.includes('Cannot connect') || errorMessage.includes('Failed to fetch')) {
+                errorMessage = 'Cannot connect to server. Please check your internet connection and try again.';
             }
             
-            errorDiv.textContent = errorMessage;
-            errorDiv.style.display = 'block';
-            
-            // Scroll to error
-            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (errorDiv) {
+                errorDiv.style.color = 'red';
+                errorDiv.textContent = errorMessage;
+                errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                // Fallback: use alert if errorDiv not found
+                alert('Error: ' + errorMessage);
+            }
         }
         });
     }
