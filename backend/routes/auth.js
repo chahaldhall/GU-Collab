@@ -168,6 +168,71 @@ router.post('/signup', async (req, res) => {
       }
     }
 
+    // ✅ IMPORTANT: Send welcome email BEFORE creating user account
+    // If email fails, signup will be rejected
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({ 
+        message: 'Email service is not configured. Please contact administrator.' 
+      });
+    }
+
+    try {
+      // Send welcome email
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email.toLowerCase().trim(),
+        subject: 'Welcome to GUCollab - Account Created Successfully!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f7;">
+            <div style="background-color: #0A1A44; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0;">Welcome to GUCollab!</h1>
+            </div>
+            <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
+              <p style="font-size: 16px; color: #333;">Hello <strong>${name}</strong>,</p>
+              <p style="font-size: 16px; color: #333;">Your account has been successfully created on GUCollab!</p>
+              
+              <div style="background-color: #F5F5F7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 5px 0;"><strong>Course:</strong> ${course}</p>
+                <p style="margin: 5px 0;"><strong>Roll Number:</strong> ${rollNumber}</p>
+              </div>
+              
+              <p style="font-size: 16px; color: #333;">You can now:</p>
+              <ul style="font-size: 16px; color: #333;">
+                <li>Create and join projects</li>
+                <li>Participate in hackathons</li>
+                <li>Connect with other students</li>
+                <li>Showcase your completed projects</li>
+              </ul>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL || 'https://gu-collab.vercel.app'}/login.html" 
+                   style="background-color: #F7941D; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Login to Your Account
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666; margin-top: 30px;">If you have any questions, feel free to contact us.</p>
+              <p style="font-size: 14px; color: #666; margin: 0;">Best regards,<br>The GUCollab Team</p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+              <p>This is an automated email. Please do not reply.</p>
+            </div>
+          </div>
+        `
+      });
+      
+      console.log(`✅ Welcome email sent successfully to: ${email}`);
+    } catch (emailError) {
+      console.error('❌ Failed to send welcome email:', emailError);
+      // If email fails, reject signup
+      return res.status(500).json({ 
+        message: 'Failed to send welcome email. Please check your email address and try again. If the problem persists, contact support.',
+        error: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+      });
+    }
+
+    // ✅ Only create user if email was sent successfully
     // Create new user object
     const userData = {
       name: name.trim(),
@@ -197,6 +262,8 @@ router.post('/signup', async (req, res) => {
       course: user.course,
       rollNumber: user.rollNumber
     };
+    
+    console.log(`✅ User account created successfully: ${email}`);
     
     res.status(201).json({
       token,
