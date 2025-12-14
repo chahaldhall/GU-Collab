@@ -6,55 +6,30 @@ const nodemailer = require('nodemailer');
 const router = express.Router();
 
 // Email transporter (configure with your email)
-// Determine if secure connection based on port
-const emailPort = parseInt(process.env.EMAIL_PORT) || 587;
-const isSecure = emailPort === 465; // Port 465 uses SSL/TLS
-
+// Email sending is optional - if not configured, signup will still work
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: emailPort,
-  secure: isSecure, // true for 465 (SSL), false for 587 (STARTTLS)
+  port: parseInt(process.env.EMAIL_PORT) || 587,
+  secure: false, // false for port 587 (STARTTLS)
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // Increased timeouts for Render/cloud environments
+  // Timeouts for email sending
   connectionTimeout: 10000, // 10 seconds
   greetingTimeout: 10000, // 10 seconds
   socketTimeout: 10000, // 10 seconds
-  // Additional options for better reliability
   tls: {
     rejectUnauthorized: false // Allow self-signed certificates
-  },
-  pool: true, // Use connection pooling
-  maxConnections: 1,
-  maxMessages: 3
+  }
 });
 
-// Verify email configuration on startup (non-blocking)
+// Email service is optional - no validation on startup
+// Emails will be sent in background if configured, otherwise silently skipped
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  // Don't block startup - verify in background
-  setTimeout(() => {
-    transporter.verify(function (error, success) {
-      if (error) {
-        console.error('❌ Email service configuration error:', error.message);
-        console.error('⚠️  Emails will not be sent. Please check:');
-        console.error('   1. EMAIL_USER and EMAIL_PASS are correct');
-        console.error('   2. Gmail App Password is used (not regular password)');
-        console.error('   3. 2-Step Verification is enabled on Gmail');
-        console.error('   4. SMTP port 587 is not blocked by firewall');
-        if (error.code === 'ETIMEDOUT') {
-          console.error('   → Connection timeout: SMTP server may be blocking connections');
-          console.error('   → Try using a different email service or check firewall settings');
-        }
-      } else {
-        console.log('✅ Email service is ready to send emails');
-      }
-    });
-  }, 2000); // Wait 2 seconds after server starts
+  console.log('📧 Email service configured (optional - signup works without it)');
 } else {
-  console.warn('⚠️  Email service not configured (EMAIL_USER or EMAIL_PASS missing)');
-  console.warn('   → Signup will work but welcome emails will not be sent');
+  console.log('📧 Email service not configured - signup will work without welcome emails');
 }
 
 // Generate JWT token
