@@ -45,6 +45,9 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, Postman, or curl requests)
     if (!origin) return callback(null, true);
     
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
     // List of allowed origins for both development and production
     const allowedOrigins = [
       'https://gu-collab.vercel.app',  // Production frontend
@@ -55,17 +58,24 @@ app.use(cors({
       'http://127.0.0.1:5500',         // Local development (alternative port)
       'http://localhost:5500',         // Local development (alternative port)
       process.env.FRONTEND_URL          // From environment variable
-    ].filter(Boolean); // Remove any undefined/null values
+    ].filter(Boolean).map(o => o.replace(/\/$/, '')); // Remove any undefined/null values and trailing slashes
     
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin is in allowed list (case-insensitive comparison)
+    const isAllowed = allowedOrigins.some(allowed => 
+      allowed.toLowerCase() === normalizedOrigin.toLowerCase()
+    );
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       // In development mode, allow all origins for easier testing
       if (process.env.NODE_ENV !== 'production') {
+        console.log(`⚠️  Allowing origin in development: ${origin}`);
         callback(null, true);
       } else {
-        // In production, only allow specific origins
+        // In production, log the rejected origin for debugging
+        console.warn(`❌ CORS blocked origin: ${origin}`);
+        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
         callback(new Error('Not allowed by CORS'));
       }
     }
