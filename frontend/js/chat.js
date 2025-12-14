@@ -432,13 +432,15 @@ window.toggleUserDropdown = function() {
     }
 };
 
-// Logout (make globally accessible)
-window.logout = function() {
-    if (socket) {
-        socket.disconnect();
-    }
-    removeToken();
-    removeCurrentUser();
-    window.location.href = 'login.html';
-};
+// Logout is already defined in utils.js as window.logout
+// Just disconnect socket if needed
+if (socket && typeof window.logout === 'function') {
+    const originalLogout = window.logout;
+    window.logout = function() {
+        if (socket) {
+            socket.disconnect();
+        }
+        originalLogout();
+    };
+}
 

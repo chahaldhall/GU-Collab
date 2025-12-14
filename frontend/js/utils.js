@@ -9,20 +9,122 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 
+// Session timeout: 15 minutes (900000 milliseconds)
+const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
 // Get token from localStorage
 function getToken() {
-  return localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  const loginTime = localStorage.getItem('loginTime');
+  
+  // Check if session expired
+  if (token && loginTime) {
+    const timeSinceLogin = Date.now() - parseInt(loginTime);
+    if (timeSinceLogin > SESSION_TIMEOUT) {
+      // Session expired - clear everything
+      removeToken();
+      removeCurrentUser();
+      return null;
+    }
+  }
+  
+  return token;
 }
 
-// Set token in localStorage
+// Set token in localStorage with timestamp
 function setToken(token) {
   localStorage.setItem('token', token);
+  localStorage.setItem('loginTime', Date.now().toString());
+  localStorage.setItem('lastActivity', Date.now().toString());
+  
+  // Start activity tracking
+  startActivityTracking();
 }
 
 // Remove token from localStorage
 function removeToken() {
   localStorage.removeItem('token');
+  localStorage.removeItem('loginTime');
+  localStorage.removeItem('lastActivity');
+  stopActivityTracking();
 }
+
+// Update last activity time
+function updateLastActivity() {
+  if (getToken()) {
+    localStorage.setItem('lastActivity', Date.now().toString());
+  }
+}
+
+// Check if session expired due to inactivity
+function checkSessionTimeout() {
+  const token = getToken();
+  const lastActivity = localStorage.getItem('lastActivity');
+  
+  if (!token || !lastActivity) {
+    return false; // No session
+  }
+  
+  const timeSinceActivity = Date.now() - parseInt(lastActivity);
+  
+  if (timeSinceActivity > SESSION_TIMEOUT) {
+    // Session expired due to inactivity
+    console.log('Session expired due to inactivity');
+    performLogout();
+    return true;
+  }
+  
+  return false;
+}
+
+// Start activity tracking
+let activityCheckInterval = null;
+function startActivityTracking() {
+  // Clear existing interval
+  if (activityCheckInterval) {
+    clearInterval(activityCheckInterval);
+  }
+  
+  // Update activity on user interactions
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+  events.forEach(event => {
+    document.addEventListener(event, updateLastActivity, { passive: true });
+  });
+  
+  // Check session timeout every minute
+  activityCheckInterval = setInterval(() => {
+    if (checkSessionTimeout()) {
+      // Session expired, user will be logged out
+      return;
+    }
+  }, 60000); // Check every minute
+}
+
+// Stop activity tracking
+function stopActivityTracking() {
+  if (activityCheckInterval) {
+    clearInterval(activityCheckInterval);
+    activityCheckInterval = null;
+  }
+}
+
+// Logout function
+function performLogout(showAlert = true) {
+  removeToken();
+  removeCurrentUser();
+  stopActivityTracking();
+  
+  // Show message before redirecting (only if called from timeout)
+  if (showAlert) {
+    alert('Your session has expired due to inactivity. Please login again.');
+  }
+  window.location.href = 'login.html';
+}
+
+// Make logout globally accessible
+window.logout = function() {
+  performLogout(false); // Silent logout when user clicks logout button
+};
 
 // Get current user from localStorage
 function getCurrentUser() {
@@ -112,6 +214,11 @@ function isAuthenticated() {
 
 // Redirect to login if not authenticated
 function requireAuth() {
+  // Check session timeout first
+  if (checkSessionTimeout()) {
+    return false; // Already logged out
+  }
+  
   const token = getToken();
   if (!token) {
     console.log('No token found, redirecting to login...');
@@ -127,6 +234,9 @@ function requireAuth() {
     window.location.href = 'login.html';
     return false;
   }
+  
+  // Update last activity on page load
+  updateLastActivity();
   
   return true;
 }
